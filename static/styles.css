@@ -154,7 +154,7 @@ h3 {
     margin-top: 20px;
 }
 
-.original_mel_placeholder, .cloned_mel_placeholder,
+.original_mel_placeholder, .cloned_mel_placeholder, .alignment_plot_placeholder,
 .original_waveform_placeholder, .cloned_waveform_placeholder,
 .umap_placeholder, .emb_placeholder {
     width: 100%;
@@ -162,16 +162,14 @@ h3 {
     margin-bottom: 20px;
     box-sizing: border-box;
     padding: 10px;
-    overflow-y: auto; /* Enable vertical scrolling if content exceeds max-height */
 }
 
-.original_mel_placeholder {
+.original_mel_placeholder,
+.cloned_mel_placeholder,
+.alignment_plot_placeholder {
     height: 320px;
 }
 
-.cloned_mel_placeholder {
-    height: 300px;
-}
 
 .original_waveform_placeholder, .cloned_waveform_placeholder {
     height: 295px;
@@ -228,7 +226,7 @@ h3 {
         height: 300px;
     }
     #umap_container,
-#original_waveform_container {
+    #original_waveform_container {
     margin-right: 0px;
 }
 }

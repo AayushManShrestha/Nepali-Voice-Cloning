@@ -307,6 +307,7 @@ function synthesizeVoice() {
                     document.getElementById("speaker_embeddings").style.height = "auto";
                     document.getElementById("original_mel_spectrogram").style.height = "auto";
                     document.getElementById("cloned_mel_spectrogram").style.height = "auto";
+                    document.getElementById("alignment_plot").style.height = "auto";
                     document.getElementById("original_waveform").style.height = "auto";
                     document.getElementById("cloned_waveform").style.height = "auto";
 
@@ -316,6 +317,9 @@ function synthesizeVoice() {
                     // Update Cloned Mel-Spectrogram
                     var melSpectrogramElement = document.getElementById('cloned_mel_spectrogram');
                     melSpectrogramElement.innerHTML = '<img src="data:image/png;base64,' + data.mel_spectrogram + '" alt="Mel-Spectrogram">';
+                    // Update Alignment Plot
+                    var alignmentPlotElement = document.getElementById('alignment_plot');
+                    alignmentPlotElement.innerHTML = '<img src="data:image/png;base64,' + data.alignment + '" alt="Alignment Plot">';
 
 
                     // Update Original Waveform
