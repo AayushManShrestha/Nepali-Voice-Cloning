@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-speaker Neural Voice Cloning in Nepali Language</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div id="loading_screen">
+        <div id="loader"></div>
+        <p>Loading...</p>
+    </div>
+
+    <div class="container">
+        <h1>Multi-speaker Neural Voice Cloning in Nepali Language</h1>
+
+        <div class="font-audio-selection">
+            <div class="font-selection">
+                <label for="font_select">Select Font Type:</label>
+                <select name="font_select" id="font_select" required onchange="enableTextArea()">
+                    <option value="" selected disabled>Select a Font</option>
+                    <option value="Preeti">Preeti</option>
+                    <option value="Unicode">Unicode</option>
+                </select>
+                <button id="keyboard_button" onclick="showKeyboard()">View Preeti layout</button>
+            </div>
+
+            <div class="audio-selection">
+                <label for="audio_select">Upload Target Audio:</label>
+                <select name="audio_select" id="audio_select" required onchange="showAudioOptions()">
+                    <option value="" selected disabled>Select Option</option>
+                    <option value="record">Record voice</option>
+                    <option value="select_speaker">Select speaker</option>
+                    <option value="upload_speaker">Upload speaker file</option>
+                </select>
+
+                <div id="record_option" class="audio-option" style="display: none;">
+                    <div id="record_buttons_wrapper" style="display: inline-block; vertical-align: top; margin-right: 20px;">
+                        <button id="start_recording_button" onclick="startRecording()" style="margin-bottom: 10px;">Record</button>
+                        <button id="stop_recording_button" onclick="stopRecording()" disabled>Stop</button>
+                        <br>
+                        <p id="record_status" style="margin: 0; font-size: 14px;"></p>
+                    </div>
+                    <!-- Audio player -->
+                    <div id="audio_player_container" style="display: inline-block; vertical-align: top;">
+                        <audio controls id="recorded_audio_player"></audio>
+                    </div>
+                </div>                                             
+                
+                <div id="select_speaker_option" class="audio-option" style="display: none;">
+                    <label for="speaker_select" style="display: inline-block; margin-bottom: 5px;">Select Speaker:</label>
+                    <select name="speaker_select" id="speaker_select" required style="display: inline-block;">
+                        <option value="" selected disabled>Select Speaker</option>
+                        <option value="Aarogya Bhandari">Aarogya Bhandari</option>
+                        <option value="Aayush Man Shrestha">Aayush Man Shrestha</option>
+                        <option value="Aayush Puri">Aayush Puri</option>
+                        <option value="Abiral Manandhar">Abiral Manandhar</option>
+                        <option value="Amar Dura">Amar Dura</option>
+                        <option value="Amit KC">Amit KC</option>
+                        <option value="Anish Raj Manandhar">Anish Raj Mananadhar</option>
+                        <option value="Anushka Shrestha">Anushka Shrestha</option>
+                        <option value="Bhadragol">Bhadragol</option>
+                        <option value="BTkancha">BTkancha</option>
+                        <option value="King Birendra">King Birendra</option>
+                        <option value="Kristina Bhandari">Kristina Bhandari</option>
+                        <option value="Lekhibooks">Lekhibooks</option>
+                        <option value="Magne Buda">Magne Buda</option>
+                        <option value="Neetesh Jung Kunwar">Neetesh Jung Kunwar</option>
+                        <option value="Prachanda">Prachanda</option>
+                        <option value="Pradeepti Dongol">Pradeepti Dongol</option>
+                        <option value="Ravi Lamichhane">Ravi Lamichhane</option>
+                        <option value="Shrinkhala Khatiwada">Shrinkhala Khatiwada</option>
+                        <option value="Shristi Shrestha">Shristi Shrestha</option>
+                        <option value="Shruti">Shruti</option>
+                    </select>
+                </div>                              
+                
+                <div id="upload_speaker_option" class="audio-option" style="display: none;">
+                    <label for="audio_file_upload" style="display: inline-block; margin-bottom: 5px;">Upload Audio File:</label>
+                    <input type="file" id="audio_file_upload" name="audio_file_upload" accept=".mp3, .wav, .flac" required style="display: inline-block;">
+                </div>
+            </div>            
+        </div>
+
+        <div id="iframe-unicode" style="display: none;"></div>
+        <div id="keyboard_image" style="display: none;">
+            <img src="/static/images/PreetiKeyboard.png" alt="Nepali Keyboard">
+        </div>
+
+        <textarea name="input_text" id="input_text" rows="10" cols="50" placeholder="Enter text..." required disabled></textarea>
+        <button id="synthesize_button" onclick="synthesizeVoice()">Synthesize Voice</button>
+
+        <div id="output_section">
+            <hr>
+            <h2 style="text-align: center;">Output</h2>
+            <hr>
+
+            <h2 style="text-align: center;">Speaker Encoder Output</h2>
+            <div id="umap_embedding_container">
+                <div id="umap_container">
+                    <h3>Original Speaker Embeddings</h3> 
+                    <div id="umap_projection" class="umap_placeholder">
+                        <!-- Display original speaker embedding visualization here -->
+                    </div>
+                </div>
+        
+                <div id="embedding_container">
+                    <h3>Cloned Speaker Embeddings</h3>
+                    <div id="speaker_embeddings" class="emb_placeholder">
+                        <!-- Display cloned speaker embedding visualization here -->
+                    </div>
+                </div>
+            </div>
+
+
+            <h2 style="text-align: center;">Synthesizer Output</h2>
+            <h3>Original Mel-Spectrogram</h3>
+            <div id="original_mel_spectrogram" class="original_mel_placeholder">
+                <!-- Display Mel-Spectrogram image here -->
+            </div>
+            <h3>Mel-Spectrogram and Alignment Plot</h3>
+            <div id="cloned_mel_spectrogram" class="cloned_mel_placeholder">
+                <!-- Display Mel-Spectrogram image here -->
+            </div>
+
+
+            <h2 style="text-align: center;">Vocoder Output</h2>
+            <div id="audio_player_container">
+                <div style="margin-right: 10%;">
+                    <h3>Original Audio</h3>
+                    <audio controls id="original_audio_player"></audio>
+                </div>
+                <div>
+                    <h3>Cloned Audio</h3>
+                    <audio controls id="cloned_audio_player"></audio>
+                </div>
+            </div>
+
+            <div id="waveform_container">
+                <div id="original_waveform_container">
+                    <h3>Waveform of Original Audio</h3>
+                    <div id="original_waveform" class="original_waveform_placeholder">
+                        <!-- Display Waveform image or visualization here -->
+                    </div>
+                </div>
+
+                <div id="cloned_waveform_container">
+                    <h3>Waveform of Cloned Audio</h3>
+                    <div id="cloned_waveform" class="cloned_waveform_placeholder">
+                        <!-- Display Waveform image or visualization here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Romanization Script for Unicode -->
+            <script>
+                document.addEventListener("DOMContentLoaded", function () {
+                    var contentContainer = document.getElementById("iframe-unicode");
+                    var htmlContent = `
+                        <div class="my-tools">
+                            <link rel="stylesheet" href="https://writenepali.com/assets/embed/style.css">
+                            <br>
+                            <form name="Form1">
+                                <textarea class="textarea_unicode" id="roman" name="ascii" cols="50" rows="5" onKeyUp="javascript:convert();" placeholder="Enter Roman English..."></textarea>
+                                <div class="unicode_roman">
+                                    <textarea id="unicode_text" class="textarea_unicode" name="unicode" cols="50" rows="5" readonly></textarea>
+                                </div>
+                                <button class="copy-button" onclick="copyUnicode(event)" type="button">Copy</button>
+                                <input class="clear-button" type="button" value="Clear" onclick="clearContent()">
+                                <a class="iframe-link" href="https://writenepali.com/nepali-unicode/" title="Nepali Unicode">Nepali Unicode</a>
+                                <select class="btn" onChange="javascript:convert();" name="htmlEncode" style="display: none;">
+                                    <option value="false" selected="selected">Unicode</option>
+                                    <option value="true">HTML</option>
+                                </select>
+                                <input disabled="disabled" class="btn" onClick="javascript:translate(Form1.ascii, Form1.unicode, eval(Form1.htmlEncode.value), Form1.smartConverter_.checked);" value="Convert" name="convertNow" type="hidden">
+                                <input class="btn" onClick="javascript:smartConverter(Form1.smartConverter_.checked);convert();" checked="checked" name="smartConverter_" value="ON" type="checkbox" style="display:none;">
+                            </form>
+                        </div>`;
+                    var tempContainer = document.createElement("div");
+                    tempContainer.innerHTML = htmlContent;
+                    while (tempContainer.firstChild) {
+                        contentContainer.appendChild(tempContainer.firstChild);
+                    }
+                });
+                var scriptElement = document.createElement('script');
+                scriptElement.src = 'https://writenepali.com/assets/js/roman.js';
+                document.head.appendChild(scriptElement);
+            </script>
+        </div>
+    </div>
+
+    <!-- Embedding Script when Unicode is selected -->
+    <script>
+        var iframeUnicode = document.getElementById('iframe-unicode');
+        // Add event listener for changes in font selection
+        document.getElementById('font_select').addEventListener('change', function () {
+            if (this.value === "Unicode") {
+                // Show the Unicode iframe and hide the Preeti iframe
+                iframeUnicode.style.display = 'block';
+                document.getElementById('iframe-preeti').style.display = 'none';
+            } else {
+                // Hide the Unicode iframe
+                iframeUnicode.style.display = 'none';
+            }
+        });
+    </script>
+
+    <!-- Embed Script for Unicode -->
+    <div id="iframe-unicode"></div>
+    <script src="https://writenepali.com/assets/embed/roman/script.js"></script>
+
+    <!-- Embed Script for Preeti -->
+    <div id="iframe-preeti"></div>
+    <script>
+        var fontSelect = document.getElementById('font_select');
+        // Add event listener for changes in font selection
+        fontSelect.addEventListener('change', function () {
+            if (fontSelect.value === "Preeti") {
+                // Show the Preeti iframe and hide the Unicode iframe
+                document.getElementById('iframe-preeti').style.display = 'block';
+                document.getElementById('iframe-unicode').style.display = 'none';
+            } else {
+                // Hide the Preeti iframe
+                document.getElementById('iframe-preeti').style.display = 'none';
+            }
+        });
+    </script>
+    
+    <script src="https://unpkg.com/nepalify@0.5.0/umd/nepalify.production.min.js"></script>
+    <script src="../static/script.js"></script>
+</body>
+</html>

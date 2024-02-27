@@ -1,0 +1,238 @@
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+#font_select,
+#audio_select {
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+}
+
+.font-audio-selection {
+    display: flex; /* Use flexbox for layout */
+    justify-content: space-between; /* Add space between the two blocks */
+}
+
+.font-selection,
+.audio-selection {
+    width: 48%; /* Set width to occupy almost half of the container */
+}
+
+#input_text {
+    width: 100%;
+    padding: 5px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+.container {
+    max-width: 1150px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+#synthesize_button {
+    background-color: rgba(76, 175, 80, 0.9);
+    color: #fff;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    display: block;
+    max-width: 200px;
+    width: 100%;
+    margin-left: auto;
+}
+
+#synthesize_button:hover {
+    background-color: rgba(76, 175, 80, 1); /* Adjusted color for hover state */
+}
+
+h2,
+h3 {
+    color: #333;
+}
+
+#mel_spectrogram,
+#audio_file,
+#waveform {
+    margin-top: 20px;
+}
+
+#audio_link {
+    display: inline-block;
+    background-color: #4caf50;
+    color: #fff;
+    padding: 5px 10px;
+    text-decoration: none;
+    border-radius: 3px;
+    margin-top: 5px;
+}
+
+#keyboard_image {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 50%; /* Position at the horizontal center */
+    transform: translateX(-50%); /* Center the image */
+    width: 100%; 
+    height: 50%;
+    background-color: rgba(255, 255, 255, 0);
+    z-index: 999;
+}
+
+#keyboard_button {
+    background-color: rgba(76, 175, 80, 0.9);
+    color: #fff;
+    padding: 0 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    display: block;
+    margin-top: 5px;
+    transition: background-color 0.3s ease;
+}
+
+#keyboard_button:hover {
+    background-color: rgba(76, 175, 80, 1);
+}
+
+#keyboard_image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+#loading_screen {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#loader {
+    border: 8px solid #f3f3f3;
+    border-top: 8px solid #3498db;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#output_section {
+    margin-top: 20px;
+}
+
+.original_mel_placeholder, .cloned_mel_placeholder,
+.original_waveform_placeholder, .cloned_waveform_placeholder,
+.umap_placeholder, .emb_placeholder {
+    width: 100%;
+    background-color: #ccc;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+    padding: 10px;
+    overflow-y: auto; /* Enable vertical scrolling if content exceeds max-height */
+}
+
+.original_mel_placeholder {
+    height: 320px;
+}
+
+.cloned_mel_placeholder {
+    height: 300px;
+}
+
+.original_waveform_placeholder, .cloned_waveform_placeholder {
+    height: 295px;
+}
+
+.umap_placeholder,
+.emb_placeholder {
+    height: 460px;
+}
+
+#umap_embedding_container,
+#waveform_container {
+    display: flex;
+    justify-content: space-between;
+}
+
+#umap_container, #embedding_container,
+#original_waveform_container, #cloned_waveform_container {
+    flex: 1;
+}
+
+#umap_container,
+#original_waveform_container {
+    margin-right: 20px;
+}
+
+#umap_projection,
+#speaker_embeddings {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#audio_player_container{
+    display: flex;
+    justify-content: flex-start;
+}
+
+@media screen and (max-width: 1000px) {
+    #audio_player_container,
+    #umap_embedding_container,
+    #waveform_container {
+        flex-direction: column;
+    }
+    .original_mel_placeholder,
+    .cloned_mel_placeholder {
+        height: 190px;
+    }
+    .original_waveform_placeholder,
+    .cloned_waveform_placeholder {
+        height: 300px;
+    }
+    .umap_placeholder,
+    .emb_placeholder {
+        height: 300px;
+    }
+}
+
+
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
