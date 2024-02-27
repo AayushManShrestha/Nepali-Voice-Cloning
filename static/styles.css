@@ -41,6 +41,12 @@ label {
     box-sizing: border-box;
 }
 
+#male_select, #female_select {
+    display: inline-block;
+    margin-right: 15%;
+}
+
+
 .container {
     max-width: 1150px;
     margin: 0 auto;

@@ -121,6 +121,37 @@ function showAudioOptions() {
     document.getElementById(selectedOption + "_option").style.display = "block";
 }
 
+function showMaleOptions() {
+    var select = document.getElementById("speaker_select");
+    select.innerHTML = ""; // Clear previous options
+    // Add male speakers
+    var maleSpeakers = ["Aarogya Bhandari", "Aayush Man Shrestha", "Aayush Puri", "Abiral Manandhar", "Amar Dura", "Amit KC", "Anish Raj Manandhar", "BTkancha", "King Birendra", "Magne Buda", "Neetesh Jung Kunwar", "Prachanda", "Ravi Lamichhane"];
+    for (var i = 0; i < maleSpeakers.length; i++) {
+    var option = document.createElement("option");
+    option.text = maleSpeakers[i];
+    option.value = maleSpeakers[i];
+    select.add(option);
+    }
+    document.getElementById("select_speaker_option").style.display = "block";
+}
+
+function showFemaleOptions() {
+    var select = document.getElementById("speaker_select");
+    select.innerHTML = ""; // Clear previous options
+    
+    // Add female speakers
+    var femaleSpeakers = ["Anushka Shrestha", "Kristina Bhandari", "Lekhibooks", "Pradeepti Dongol", "Shrinkhala Khatiwada", "Shristi Shrestha", "Shruti"];
+    for (var i = 0; i < femaleSpeakers.length; i++) {
+        var option = document.createElement("option");
+        option.text = femaleSpeakers[i];
+        option.value = femaleSpeakers[i];
+        select.add(option);
+    }
+    
+    document.getElementById("select_speaker_option").style.display = "block";
+}
+
+
 function startRecording() {
     // Declare and initialize button variables
     let startRecordingButton = document.getElementById('start_recording_button');

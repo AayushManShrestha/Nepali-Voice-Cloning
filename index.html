@@ -47,35 +47,46 @@
                     <div id="audio_player_container" style="display: inline-block; vertical-align: top;">
                         <audio controls id="recorded_audio_player"></audio>
                     </div>
-                </div>                                             
+                </div>
                 
-                <div id="select_speaker_option" class="audio-option" style="display: none;">
-                    <label for="speaker_select" style="display: inline-block; margin-bottom: 5px;">Select Speaker:</label>
-                    <select name="speaker_select" id="speaker_select" required style="display: inline-block;">
-                        <option value="" selected disabled>Select Speaker</option>
-                        <option value="Aarogya Bhandari">Aarogya Bhandari</option>
-                        <option value="Aayush Man Shrestha">Aayush Man Shrestha</option>
-                        <option value="Aayush Puri">Aayush Puri</option>
-                        <option value="Abiral Manandhar">Abiral Manandhar</option>
-                        <option value="Amar Dura">Amar Dura</option>
-                        <option value="Amit KC">Amit KC</option>
-                        <option value="Anish Raj Manandhar">Anish Raj Mananadhar</option>
-                        <option value="Anushka Shrestha">Anushka Shrestha</option>
-                        <option value="Bhadragol">Bhadragol</option>
-                        <option value="BTkancha">BTkancha</option>
-                        <option value="King Birendra">King Birendra</option>
-                        <option value="Kristina Bhandari">Kristina Bhandari</option>
-                        <option value="Lekhibooks">Lekhibooks</option>
-                        <option value="Magne Buda">Magne Buda</option>
-                        <option value="Neetesh Jung Kunwar">Neetesh Jung Kunwar</option>
-                        <option value="Prachanda">Prachanda</option>
-                        <option value="Pradeepti Dongol">Pradeepti Dongol</option>
-                        <option value="Ravi Lamichhane">Ravi Lamichhane</option>
-                        <option value="Shrinkhala Khatiwada">Shrinkhala Khatiwada</option>
-                        <option value="Shristi Shrestha">Shristi Shrestha</option>
-                        <option value="Shruti">Shruti</option>
-                    </select>
-                </div>                              
+                <form>
+                    <div id="select_speaker_option" class="audio-option" style="display: none;">
+                        <label id="male_select">
+                            <input type="radio" name="gender" value="male" onclick="showMaleOptions()">
+                            Male
+                        </label>
+                        <label id="female_select">
+                            <input type="radio" name="gender" value="female" onclick="showFemaleOptions()">
+                            Female
+                        </label>
+                        <br>
+                        <label for="speaker_select" style="display: inline-block; margin-bottom: 5px;">Select Speaker:</label>
+                        <select name="speaker_select" id="speaker_select" required style="display: inline-block;">
+                            <option value="" selected disabled>Select Speaker</option>
+                            <option value="Aarogya Bhandari">Aarogya Bhandari</option>
+                            <option value="Aayush Man Shrestha">Aayush Man Shrestha</option>
+                            <option value="Aayush Puri">Aayush Puri</option>
+                            <option value="Abiral Manandhar">Abiral Manandhar</option>
+                            <option value="Amar Dura">Amar Dura</option>
+                            <option value="Amit KC">Amit KC</option>
+                            <option value="Anish Raj Manandhar">Anish Raj Mananadhar</option>
+                            <option value="Anushka Shrestha">Anushka Shrestha</option>
+                            <option value="Bhadragol">Bhadragol</option>
+                            <option value="BTkancha">BTkancha</option>
+                            <option value="King Birendra">King Birendra</option>
+                            <option value="Kristina Bhandari">Kristina Bhandari</option>
+                            <option value="Lekhibooks">Lekhibooks</option>
+                            <option value="Magne Buda">Magne Buda</option>
+                            <option value="Neetesh Jung Kunwar">Neetesh Jung Kunwar</option>
+                            <option value="Prachanda">Prachanda</option>
+                            <option value="Pradeepti Dongol">Pradeepti Dongol</option>
+                            <option value="Ravi Lamichhane">Ravi Lamichhane</option>
+                            <option value="Shrinkhala Khatiwada">Shrinkhala Khatiwada</option>
+                            <option value="Shristi Shrestha">Shristi Shrestha</option>
+                            <option value="Shruti">Shruti</option>
+                        </select>
+                    </div>
+                </form>
                 
                 <div id="upload_speaker_option" class="audio-option" style="display: none;">
                     <label for="audio_file_upload" style="display: inline-block; margin-bottom: 5px;">Upload Audio File:</label>
