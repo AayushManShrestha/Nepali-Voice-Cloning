@@ -183,13 +183,18 @@ h3 {
 }
 
 #umap_embedding_container,
-#waveform_container {
+#waveform_container,
+#audio_player_container {
     display: flex;
     justify-content: space-between;
 }
 
-#umap_container, #embedding_container,
-#original_waveform_container, #cloned_waveform_container {
+#umap_container,
+#embedding_container,
+#original_waveform_container,
+#cloned_waveform_container,
+#original_audio_player_container,
+#cloned_audio_player_container {
     flex: 1;
 }
 
@@ -202,11 +207,6 @@ h3 {
 #speaker_embeddings {
     width: 100%;
     box-sizing: border-box;
-}
-
-#audio_player_container{
-    display: flex;
-    justify-content: flex-start;
 }
 
 @media screen and (max-width: 1000px) {
@@ -227,6 +227,10 @@ h3 {
     .emb_placeholder {
         height: 300px;
     }
+    #umap_container,
+#original_waveform_container {
+    margin-right: 0px;
+}
 }
 
 
