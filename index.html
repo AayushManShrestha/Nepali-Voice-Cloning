@@ -171,34 +171,33 @@
             
             <!-- Romanization Script for Unicode -->
             <script>
-                document.addEventListener("DOMContentLoaded", function () {
-                    var contentContainer = document.getElementById("iframe-unicode");
-                    var htmlContent = `
-                        <div class="my-tools">
-                            <link rel="stylesheet" href="https://writenepali.com/assets/embed/style.css">
-                            <br>
-                            <form name="Form1">
-                                <textarea class="textarea_unicode" id="roman" name="ascii" cols="50" rows="5" onKeyUp="javascript:convert();" placeholder="Enter Roman English..."></textarea>
-                                <div class="unicode_roman">
-                                    <textarea id="unicode_text" class="textarea_unicode" name="unicode" cols="62" rows="7" readonly placeholder="If this textarea is not being updated as you type, please refresh the browser."></textarea>
-                                </div>
-                                <button class="copy-button" onclick="copyUnicode(event)" type="button">Copy</button>
-                                <input class="clear-button" type="button" value="Clear" onclick="clearContent()">
-                                <a class="iframe-link" href="https://writenepali.com/nepali-unicode/" title="Nepali Unicode">Nepali Unicode</a>
-                                <select class="btn" onChange="javascript:convert();" name="htmlEncode" style="display: none;">
-                                    <option value="false" selected="selected">Unicode</option>
-                                    <option value="true">HTML</option>
-                                </select>
-                                <input disabled="disabled" class="btn" onClick="javascript:translate(Form1.ascii, Form1.unicode, eval(Form1.htmlEncode.value), Form1.smartConverter_.checked);" value="Convert" name="convertNow" type="hidden">
-                                <input class="btn" onClick="javascript:smartConverter(Form1.smartConverter_.checked);convert();" checked="checked" name="smartConverter_" value="ON" type="checkbox" style="display:none;">
-                            </form>
-                        </div>`;
-                    var tempContainer = document.createElement("div");
-                    tempContainer.innerHTML = htmlContent;
-                    while (tempContainer.firstChild) {
-                        contentContainer.appendChild(tempContainer.firstChild);
-                    }
-                });
+                var contentContainer = document.getElementById("iframe-unicode");
+                var htmlContent = `
+                    <div class="my-tools">
+                        <link rel="stylesheet" href="https://writenepali.com/assets/embed/style.css">
+                        <br>
+                        <form name="Form1">
+                            <textarea class="textarea_unicode" id="roman" name="ascii" cols="50" rows="5" onKeyUp="javascript:convert();" placeholder="Enter Roman English..."></textarea>
+                            <div class="unicode_roman">
+                                <textarea id="unicode_text" class="textarea_unicode" name="unicode" cols="62" rows="7" readonly placeholder="If you're seeing this text, the unicode conversion is not working currently. To fix this: Press Nepali Unicode button below. Press back. Set font to Preeti, then set font to Unicode."></textarea>
+                            </div>
+                            <button class="copy-button" onclick="copyUnicode(event)" type="button">Copy</button>
+                            <input class="clear-button" type="button" value="Clear" onclick="clearContent()">
+                            <a class="iframe-link" href="https://writenepali.com/nepali-unicode/" title="Nepali Unicode">Nepali Unicode</a>
+                            <select class="btn" onChange="javascript:convert();" name="htmlEncode" style="display: none;">
+                                <option value="false" selected="selected">Unicode</option>
+                                <option value="true">HTML</option>
+                            </select>
+                            <input disabled="disabled" class="btn" onClick="javascript:translate(Form1.ascii, Form1.unicode, eval(Form1.htmlEncode.value), Form1.smartConverter_.checked);" value="Convert" name="convertNow" type="hidden">
+                            <input class="btn" onClick="javascript:smartConverter(Form1.smartConverter_.checked);convert();" checked="checked" name="smartConverter_" value="ON" type="checkbox" style="display:none;">
+                        </form>
+                    </div>`;
+                var tempContainer = document.createElement("div");
+                tempContainer.innerHTML = htmlContent;
+                while (tempContainer.firstChild) {
+                    contentContainer.appendChild(tempContainer.firstChild);
+                }
+
                 var scriptElement = document.createElement('script');
                 scriptElement.src = 'https://writenepali.com/assets/js/roman.js';
                 document.head.appendChild(scriptElement);
