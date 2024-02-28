@@ -10,7 +10,7 @@
 <body>
     <div id="loading_screen">
         <div id="loader"></div>
-        <p>Loading...</p>
+        <p>Please Wait...<br>Cloning can take about 5 to 15 minutes...<br>Feel free to browse other sites as you wait. We will alert you when output is ready.</p>
     </div>
 
     <div class="container">
@@ -180,7 +180,7 @@
                             <form name="Form1">
                                 <textarea class="textarea_unicode" id="roman" name="ascii" cols="50" rows="5" onKeyUp="javascript:convert();" placeholder="Enter Roman English..."></textarea>
                                 <div class="unicode_roman">
-                                    <textarea id="unicode_text" class="textarea_unicode" name="unicode" cols="50" rows="5" readonly></textarea>
+                                    <textarea id="unicode_text" class="textarea_unicode" name="unicode" cols="62" rows="7" readonly placeholder="If this textarea is not being updated as you type, please refresh the browser."></textarea>
                                 </div>
                                 <button class="copy-button" onclick="copyUnicode(event)" type="button">Copy</button>
                                 <input class="clear-button" type="button" value="Clear" onclick="clearContent()">
