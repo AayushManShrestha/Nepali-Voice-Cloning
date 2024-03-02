@@ -125,7 +125,7 @@ function showMaleOptions() {
     var select = document.getElementById("speaker_select");
     select.innerHTML = ""; // Clear previous options
     // Add male speakers
-    var maleSpeakers = ["Aarogya Bhandari", "Aayush Man Shrestha", "Aayush Puri", "Abiral Manandhar", "Amar Dura", "Amit KC", "Anish Raj Manandhar", "BTkancha", "King Birendra", "Magne Buda", "Neetesh Jung Kunwar", "Prachanda", "Ravi Lamichhane"];
+    var maleSpeakers = ["Kedar Ghimire", "Nawaraj Parajuli", "Rajesh Hamal", "Saugat Malla", "Vten"];
     for (var i = 0; i < maleSpeakers.length; i++) {
     var option = document.createElement("option");
     option.text = maleSpeakers[i];
@@ -140,7 +140,7 @@ function showFemaleOptions() {
     select.innerHTML = ""; // Clear previous options
     
     // Add female speakers
-    var femaleSpeakers = ["Anushka Shrestha", "Kristina Bhandari", "Lekhibooks", "Pradeepti Dongol", "Shrinkhala Khatiwada", "Shristi Shrestha", "Shruti"];
+    var femaleSpeakers = ["Barsha Raut", "Namrata Shrestha", "Shrinkhala Khatiwada", "Sneh Rana", "Swastima Khadka"];
     for (var i = 0; i < femaleSpeakers.length; i++) {
         var option = document.createElement("option");
         option.text = femaleSpeakers[i];
