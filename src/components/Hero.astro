@@ -1,0 +1,107 @@
+---
+---
+<section class="hero">
+  <div class="shell">
+    <p class="eyebrow rise" style="--delay: 0ms">SV2TTS &middot; Nepali &middot; 10 speakers</p>
+
+    <h1 class="rise" style="--delay: 70ms">
+      Clone a voice<br />
+      <em>speaking Nepali</em><br />
+      from five seconds of audio.
+    </h1>
+
+    <div class="lede rise" style="--delay: 160ms">
+      <p>
+        A three-stage neural pipeline that learns a speaker&rsquo;s timbre from one short
+        reference clip, then reads arbitrary Nepali text back in that voice &mdash; without
+        ever being trained on the speaker.
+      </p>
+      <p class="sub">
+        Built on the SV2TTS architecture and adapted to a low-resource language. The
+        model server runs on two CPU cores, so everything you hear is synthesised live.
+      </p>
+    </div>
+
+    <div class="facts rise" style="--delay: 240ms">
+      <dl>
+        <div><dt>Reference needed</dt><dd>~5<span>s</span></dd></div>
+        <div><dt>Speaker embedding</dt><dd>256<span>-d</span></dd></div>
+        <div><dt>Output rate</dt><dd>16<span>kHz</span></dd></div>
+        <div><dt>Trained on speaker</dt><dd>No<span>, zero-shot</span></dd></div>
+      </dl>
+    </div>
+
+    <p class="jump rise" style="--delay: 320ms">
+      <a href="#studio">Try it &darr;</a>
+    </p>
+  </div>
+</section>
+
+<style>
+  .hero { padding-block: clamp(3rem, 7vw, 6.5rem) clamp(2rem, 4vw, 3.5rem); }
+
+  h1 {
+    font-size: var(--step-4);
+    margin-block: 0.7em 0;
+    max-width: 16ch;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .lede {
+    margin-top: clamp(1.6rem, 3vw, 2.4rem);
+    max-width: 54ch;
+    display: grid;
+    gap: 0.9rem;
+  }
+  .lede p { font-size: var(--step-1); line-height: 1.5; }
+  .lede .sub {
+    font-size: var(--step-0);
+    color: var(--ink-soft);
+    line-height: 1.65;
+  }
+
+  .facts { margin-top: clamp(2.2rem, 4vw, 3.2rem); }
+  dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 1px;
+    margin: 0;
+    background: var(--rule);
+    border-block: 1px solid var(--rule);
+  }
+  dl > div { background: var(--paper); padding: 1rem 0.2rem 1.05rem; }
+  dt {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  dd {
+    margin: 0.35rem 0 0;
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    line-height: 1;
+  }
+  dd span {
+    font-family: var(--font-sans);
+    font-size: var(--step--1);
+    color: var(--ink-faint);
+    letter-spacing: 0;
+  }
+
+  .jump { margin-top: 2rem; }
+  .jump a {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent);
+    padding-bottom: 2px;
+    color: var(--accent);
+  }
+</style>

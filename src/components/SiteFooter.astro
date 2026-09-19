@@ -1,0 +1,66 @@
+---
+---
+<footer class="foot">
+  <hr class="rule" />
+  <div class="shell inner">
+    <div class="col">
+      <p class="eyebrow">Nepali Voice Cloning</p>
+      <p class="blurb">
+        Multi-speaker neural voice cloning for Nepali, built on SV2TTS
+        (GE2E encoder &rarr; Tacotron &rarr; WaveRNN).
+      </p>
+    </div>
+
+    <nav class="col" aria-label="Project links">
+      <p class="eyebrow">Elsewhere</p>
+      <ul>
+        <li><a href="https://github.com/AayushManShrestha/Nepali-Voice-Cloning">Source on GitHub</a></li>
+        <li><a href="https://voice-cloning-mos.vercel.app">Listening study (MOS)</a></li>
+        <li><a href="https://huggingface.co/spaces/lord-reso/Nepali-Voice-Cloning">Model server</a></li>
+        <li><a href="https://www.youtube.com/watch?v=UYX3VjIn17U">Demo video</a></li>
+      </ul>
+    </nav>
+
+    <div class="col">
+      <p class="eyebrow">Credit</p>
+      <p class="blurb">
+        Architecture after Jia et&nbsp;al., <em>Transfer Learning from Speaker Verification
+        to Multispeaker Text-To-Speech</em>, and Corentin Jemine&rsquo;s
+        Real-Time-Voice-Cloning.
+      </p>
+    </div>
+  </div>
+
+  <div class="shell bottom">
+    <p>Built by Aayush Man Shrestha</p>
+    <p class="warnline">Please don&rsquo;t clone anyone&rsquo;s voice without their consent.</p>
+  </div>
+</footer>
+
+<style>
+  .foot { margin-top: auto; }
+  .inner {
+    display: grid;
+    gap: clamp(1.6rem, 4vw, 3rem);
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    padding-block: clamp(2rem, 4vw, 3rem) 1.5rem;
+  }
+  .blurb { color: var(--ink-soft); font-size: var(--step--1); margin-top: 0.6rem; max-width: 34ch; }
+  .blurb em { font-style: italic; }
+  ul { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; gap: 0.35rem; }
+  ul a { font-size: var(--step--1); text-decoration-color: var(--rule-strong); }
+
+  .bottom {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-block: 1.1rem 2rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+  }
+  .bottom p { margin: 0; }
+  .warnline { color: var(--ink-faint); }
+</style>

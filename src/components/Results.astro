@@ -1,0 +1,176 @@
+---
+---
+<section class="results" id="results" data-results hidden>
+  <div class="shell">
+    <header class="head">
+      <p class="eyebrow">Output</p>
+      <h2>What came back.</h2>
+      <p class="intro">
+        Every plot below is drawn in your browser from raw arrays. The server used to
+        render these as PNGs and ship 592&nbsp;KB per request &mdash; 86% of it pictures.
+      </p>
+    </header>
+
+    <!-- --- listen ------------------------------------------------------- -->
+    <div class="ab">
+      {['reference', 'cloned'].map((which) => (
+        <article class="player" data-player={which}>
+          <header>
+            <h3>{which === 'reference' ? 'Reference' : 'Cloned'}</h3>
+            <p class="who" data-player-name={which}>&mdash;</p>
+          </header>
+          <canvas data-wave={which} height="96"
+                  aria-label={`${which} audio waveform`} role="img"></canvas>
+          <div class="transport">
+            <button type="button" data-play={which} aria-label={`Play ${which} audio`}>
+              <svg class="i-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>
+              <svg class="i-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z"/></svg>
+            </button>
+            <p class="time"><span data-time={which}>0:00</span> / <span data-dur={which}>0:00</span></p>
+            <a class="dl" data-download={which} download hidden>Download</a>
+          </div>
+          <audio data-audio={which} preload="metadata"></audio>
+        </article>
+      ))}
+    </div>
+
+    <!-- --- plots -------------------------------------------------------- -->
+    <div class="plots">
+      <figure class="plot wide">
+        <figcaption>
+          <h3>Mel spectrogram</h3>
+          <p>What the synthesizer produced &mdash; 80 frequency bands over time. This is the
+             handoff between stage 02 and stage 03.</p>
+        </figcaption>
+        <canvas data-plot="mel" height="220" role="img"
+                aria-label="Mel spectrogram of the cloned audio"></canvas>
+        <p class="axis"><span>time &rarr;</span><span data-shape="mel"></span></p>
+      </figure>
+
+      <figure class="plot">
+        <figcaption>
+          <h3>Attention alignment</h3>
+          <p>Which character the decoder attended to at each step. A clean diagonal means
+             the model tracked the text; smearing means it lost its place.</p>
+        </figcaption>
+        <canvas data-plot="alignment" height="220" role="img"
+                aria-label="Attention alignment matrix"></canvas>
+        <p class="axis"><span>decoder steps &rarr;</span><span data-shape="alignment"></span></p>
+      </figure>
+
+      <figure class="plot">
+        <figcaption>
+          <h3>Speaker embedding</h3>
+          <p>The 256 numbers that encode this voice, as a 16&times;16 grid. Everything the
+             model knows about who is speaking lives here.</p>
+        </figcaption>
+        <canvas data-plot="embedding" height="220" role="img"
+                aria-label="Speaker embedding heatmap"></canvas>
+        <p class="axis"><span>256-d GE2E vector</span></p>
+      </figure>
+    </div>
+
+    <!-- --- timings ------------------------------------------------------ -->
+    <div class="timings">
+      <p class="eyebrow">Server timings</p>
+      <ul data-timings></ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  .results { padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 6vw, 5rem); scroll-margin-top: 4rem; }
+  .head { max-width: 58ch; margin-bottom: clamp(1.8rem, 3vw, 2.6rem); }
+  h2 { font-size: var(--step-3); margin-block: 0.4em 0.5em; }
+  .intro { color: var(--ink-soft); font-size: var(--step--1); }
+
+  .ab {
+    display: grid;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  @media (min-width: 52rem) { .ab { grid-template-columns: 1fr 1fr; } }
+
+  .player { background: var(--paper); padding: 1.2rem 1.3rem 1.3rem; }
+  .player header { display: flex; align-items: baseline; gap: 0.7rem; margin-bottom: 0.9rem; }
+  .player h3 { font-size: var(--step-1); }
+  .who { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint); }
+  .player[data-player='cloned'] h3 { color: var(--accent); }
+
+  canvas { width: 100%; display: block; }
+  .player canvas { height: 96px; cursor: pointer; }
+
+  .transport { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.7rem; }
+  .transport button {
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    background: var(--ink); color: var(--paper);
+    border: 0; border-radius: 50%;
+    cursor: pointer; flex: none;
+    transition: background 0.18s var(--ease);
+  }
+  .transport button:hover { background: var(--accent); }
+  .transport button svg { grid-area: 1 / 1; }
+  .transport button .i-pause { display: none; }
+  .transport button[data-playing] .i-play { display: none; }
+  .transport button[data-playing] .i-pause { display: block; }
+
+  .time { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-faint); margin: 0; }
+  .dl {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .plots { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-top: 0; border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden; }
+  @media (min-width: 62rem) {
+    .plots { grid-template-columns: 1fr 1fr; }
+    .plot.wide { grid-column: 1 / -1; }
+  }
+  .ab { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+
+  .plot { background: var(--paper); margin: 0; padding: 1.3rem; display: grid; gap: 0.9rem; align-content: start; }
+  figcaption h3 { font-size: var(--step-1); }
+  figcaption p { color: var(--ink-soft); font-size: var(--step--1); margin-top: 0.35rem; max-width: 46ch; }
+  .plot canvas { background: var(--viz-bg); border-radius: var(--radius); height: 220px; }
+  .axis {
+    display: flex; justify-content: space-between; gap: 1rem;
+    font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-faint); margin: 0;
+  }
+
+  .timings { margin-top: 1.6rem; }
+  /* These rows are injected via innerHTML at runtime, so Astro's scoping attribute
+     is never applied to them. They must be addressed globally or they render unstyled. */
+  .timings :global(ul) {
+    list-style: none; margin: 0.7rem 0 0; padding: 0;
+    display: flex; flex-wrap: wrap; gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .timings :global(li) {
+    background: var(--paper);
+    padding: 0.55rem 0.9rem;
+    flex: 1 1 7rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+  .timings :global(li b) {
+    display: block;
+    font-weight: 500;
+    color: var(--ink-faint);
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.15rem;
+  }
+  .timings :global(li span) { color: var(--ink); font-size: 0.9rem; }
+  .timings :global(li[data-total] span) { color: var(--accent); }
+</style>

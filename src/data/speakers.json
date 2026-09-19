@@ -1,0 +1,92 @@
+[
+  {
+    "id": "barsha-raut",
+    "name": "Barsha Raut",
+    "gender": "female",
+    "note": "Actor",
+    "file": "/audio/barsha-raut.wav",
+    "duration": 5.53,
+    "sampleRate": 16000
+  },
+  {
+    "id": "kedar-ghimire",
+    "name": "Kedar Ghimire",
+    "gender": "male",
+    "note": "Comedian, known as Magne Buda",
+    "file": "/audio/kedar-ghimire.wav",
+    "duration": 4.9,
+    "sampleRate": 16000
+  },
+  {
+    "id": "namrata-shrestha",
+    "name": "Namrata Shrestha",
+    "gender": "female",
+    "note": "Actor",
+    "file": "/audio/namrata-shrestha.wav",
+    "duration": 4.35,
+    "sampleRate": 16000
+  },
+  {
+    "id": "nawaraj-parajuli",
+    "name": "Nawaraj Parajuli",
+    "gender": "male",
+    "note": "Poet",
+    "file": "/audio/nawaraj-parajuli.wav",
+    "duration": 4.87,
+    "sampleRate": 16000
+  },
+  {
+    "id": "rajesh-hamal",
+    "name": "Rajesh Hamal",
+    "gender": "male",
+    "note": "Actor, often called the Maha Nayak of Nepali cinema",
+    "file": "/audio/rajesh-hamal.wav",
+    "duration": 4.38,
+    "sampleRate": 16000
+  },
+  {
+    "id": "saugat-malla",
+    "name": "Saugat Malla",
+    "gender": "male",
+    "note": "Actor",
+    "file": "/audio/saugat-malla.wav",
+    "duration": 5.53,
+    "sampleRate": 16000
+  },
+  {
+    "id": "shrinkhala-khatiwada",
+    "name": "Shrinkhala Khatiwada",
+    "gender": "female",
+    "note": "Miss Nepal World 2018",
+    "file": "/audio/shrinkhala-khatiwada.wav",
+    "duration": 4.55,
+    "sampleRate": 16000
+  },
+  {
+    "id": "sneh-rana",
+    "name": "Sneh Rana",
+    "gender": "female",
+    "note": "Singer",
+    "file": "/audio/sneh-rana.wav",
+    "duration": 3.34,
+    "sampleRate": 16000
+  },
+  {
+    "id": "swastima-khadka",
+    "name": "Swastima Khadka",
+    "gender": "female",
+    "note": "Actor",
+    "file": "/audio/swastima-khadka.wav",
+    "duration": 3.78,
+    "sampleRate": 16000
+  },
+  {
+    "id": "vten",
+    "name": "VTEN",
+    "gender": "male",
+    "note": "Rapper",
+    "file": "/audio/vten.wav",
+    "duration": 5.48,
+    "sampleRate": 16000
+  }
+]

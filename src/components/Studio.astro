@@ -1,0 +1,429 @@
+---
+import speakers from '../data/speakers.json';
+
+// Glosses matter: most people reading this cannot type or read Devanagari, and a demo
+// they cannot drive is not a demo.
+const presets = [
+  { np: 'नमस्ते, तपाईंलाई कस्तो छ?', en: 'Hello, how are you?' },
+  { np: 'नेपाल एक सुन्दर देश हो।', en: 'Nepal is a beautiful country.' },
+  { np: 'सगरमाथा संसारकै अग्लो हिमाल हो।', en: 'Everest is the world’s tallest mountain.' },
+  { np: 'म नेपाली भाषा बोल्छु।', en: 'I speak the Nepali language.' },
+  { np: 'काठमाडौं नेपालको राजधानी हो।', en: 'Kathmandu is the capital of Nepal.' },
+];
+---
+<section class="studio" id="studio">
+  <div class="shell">
+    <header class="head">
+      <p class="eyebrow">The studio</p>
+      <h2>Make it say something.</h2>
+    </header>
+
+    <form class="rig" data-studio novalidate>
+      <!-- ---------------------------------------------------------------- 01 -->
+      <fieldset class="step">
+        <legend><span class="n">01</span> Reference voice</legend>
+        <p class="hint">The clip whose timbre gets copied. Five seconds is plenty.</p>
+
+        <div class="tabs" role="tablist" aria-label="Reference voice source">
+          <button type="button" role="tab" id="tab-library" aria-controls="panel-library" aria-selected="true" data-tab="library">Library</button>
+          <button type="button" role="tab" id="tab-record" aria-controls="panel-record" aria-selected="false" data-tab="record" tabindex="-1">Record</button>
+          <button type="button" role="tab" id="tab-upload" aria-controls="panel-upload" aria-selected="false" data-tab="upload" tabindex="-1">Upload</button>
+        </div>
+
+        <div class="panel" id="panel-library" role="tabpanel" aria-labelledby="tab-library" data-panel="library">
+          <ul class="voices">
+            {speakers.map((s, i) => (
+              <li class="voice-row">
+                <label class="voice">
+                  <input type="radio" name="speaker" value={s.id} data-src={s.file} checked={i === 0} />
+                  <span class="vbody">
+                    <span class="vname">{s.name}</span>
+                    <span class="vmeta">{s.note}</span>
+                    <span class="vnums"><span class="tag">{s.gender}</span>{s.duration}s</span>
+                  </span>
+                </label>
+                <button class="preview" type="button" data-preview={s.file}
+                        aria-label={`Preview ${s.name}`}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div class="panel" id="panel-record" role="tabpanel" aria-labelledby="tab-record" data-panel="record" hidden>
+          <div class="recorder">
+            <button class="rec" type="button" data-record>
+              <span class="bulb" aria-hidden="true"></span>
+              <span data-record-label>Start recording</span>
+            </button>
+            <p class="timer" data-record-timer aria-live="polite">Up to 10 seconds</p>
+          </div>
+          <audio controls data-recorded-player hidden></audio>
+          <p class="hint quiet">Needs microphone permission. Audio never leaves your browser except as the reference clip.</p>
+        </div>
+
+        <div class="panel" id="panel-upload" role="tabpanel" aria-labelledby="tab-upload" data-panel="upload" hidden>
+          <label class="drop" data-drop>
+            <input type="file" accept="audio/wav,audio/mpeg,audio/flac,audio/ogg,.wav,.mp3,.flac" data-file />
+            <span class="dlabel" data-file-label>Choose an audio file, or drop one here</span>
+            <span class="hint quiet">wav, mp3, flac &middot; up to 8&nbsp;MB</span>
+          </label>
+          <audio controls data-upload-player hidden></audio>
+        </div>
+      </fieldset>
+
+      <!-- ---------------------------------------------------------------- 02 -->
+      <fieldset class="step">
+        <legend><span class="n">02</span> Nepali text</legend>
+        <p class="hint">
+          Type in Devanagari, or type romanised and it converts as you go.
+        </p>
+
+        <div class="modes" role="group" aria-label="Typing mode">
+          <button type="button" data-mode="romanized" aria-pressed="true">Romanised &rarr; नेपाली</button>
+          <button type="button" data-mode="preeti" aria-pressed="false">Preeti layout</button>
+          <button type="button" data-mode="raw" aria-pressed="false">Devanagari / paste</button>
+        </div>
+
+        <div class="keyhelp" data-keyhelp hidden>
+          <button type="button" data-keyboard-toggle aria-expanded="false" aria-controls="preeti-map">
+            Show the Preeti key map
+          </button>
+          <figure id="preeti-map" hidden>
+            <img src="/images/preeti-keyboard.png" width="1154" height="388" loading="lazy" decoding="async"
+                 alt="Preeti keyboard layout: which Devanagari character each key on a QWERTY keyboard produces." />
+            <figcaption>Preeti maps each QWERTY key to a Devanagari glyph.</figcaption>
+          </figure>
+        </div>
+
+        <label class="visually-hidden" for="text">Nepali text to synthesise</label>
+        <textarea id="text" class="deva" rows="3" maxlength="500" data-text
+                  placeholder="नमस्ते..." spellcheck="false"></textarea>
+
+        <div class="meter">
+          <p class="hint quiet" data-roman-hint hidden>Typing <code>namaste</code> gives <span class="deva">नमस्ते</span>.</p>
+          <p class="count"><span data-count>0</span>&thinsp;/&thinsp;500</p>
+        </div>
+
+        <p class="warn" data-digit-warning hidden>
+          The model&rsquo;s symbol set has no digits, so numbers are dropped rather than
+          spoken. Write them as words.
+        </p>
+
+        <p class="preset-label eyebrow">Or start from one of these</p>
+        <ul class="presets">
+          {presets.map((p) => (
+            <li>
+              <button type="button" data-preset={p.np}>
+                <span class="deva np">{p.np}</span>
+                <span class="en">{p.en}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </fieldset>
+
+      <!-- ---------------------------------------------------------------- 03 -->
+      <div class="step go">
+        <button class="synth" type="submit" data-synth>
+          <span data-synth-label>Synthesise</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </button>
+
+        <div class="progress" data-progress hidden aria-live="polite">
+          <div class="track"><div class="fill" data-progress-fill></div></div>
+          <p class="plabel"><span data-progress-label>Queued</span><span class="eta" data-progress-eta></span></p>
+        </div>
+
+        <p class="error" data-error hidden role="alert"></p>
+      </div>
+    </form>
+  </div>
+</section>
+
+<style>
+  .studio { padding-block: clamp(3rem, 6vw, 5rem); scroll-margin-top: 4rem; }
+  .head { margin-bottom: clamp(1.8rem, 3vw, 2.6rem); }
+  h2 { font-size: var(--step-3); margin-top: 0.4em; }
+
+  .rig { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: var(--radius-lg); overflow: hidden; }
+  .step { background: var(--paper); border: 0; margin: 0; padding: clamp(1.3rem, 3vw, 2rem); }
+
+  /* A <legend> is laid out against the fieldset's border box, so with `border: 0`
+     the parent grid background shows through as a band. Floating it makes it flow
+     as a normal block while keeping the fieldset/legend semantics. */
+  legend {
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    padding: 0;
+    float: left;
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+  }
+  .step::after { content: ''; display: table; clear: both; }
+  legend .n {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  .hint { color: var(--ink-soft); font-size: var(--step--1); margin-top: 0.5rem; max-width: 52ch; }
+  .hint.quiet { color: var(--ink-faint); }
+
+  /* --- tabs --------------------------------------------------------------- */
+  .tabs { display: flex; gap: 0; margin-top: 1.2rem; border-bottom: 1px solid var(--rule); }
+  .tabs button {
+    appearance: none;
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 0.5rem 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button[aria-selected='true'] { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel { padding-top: 1.3rem; }
+
+  /* --- voice library ------------------------------------------------------ */
+  .voices {
+    list-style: none; margin: 0; padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.55rem;
+  }
+  .voice-row { position: relative; display: grid; }
+  .voice {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 2.9rem 0.7rem 0.75rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+  }
+  .voice:hover { border-color: var(--rule-strong); }
+  .voice input { position: absolute; opacity: 0; pointer-events: none; }
+  .voice:has(input:checked) { border-color: var(--accent); background: var(--accent-wash); }
+  .voice:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .vbody { display: grid; gap: 0.1rem; min-width: 0; flex: 1; }
+  .vname { font-weight: 500; font-size: var(--step-0); line-height: 1.3; }
+  .vmeta {
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .vnums {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    color: var(--ink-faint);
+    display: flex; align-items: center; gap: 0.45rem;
+    margin-top: 0.15rem;
+  }
+  .tag {
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 0 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .preview {
+    position: absolute;
+    right: 0.7rem;
+    top: 50%;
+    translate: 0 -50%;
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    background: transparent;
+    border: 1px solid var(--rule-strong);
+    border-radius: 50%;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.18s var(--ease);
+  }
+  .preview:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  .preview[data-playing] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+
+  /* --- recorder ----------------------------------------------------------- */
+  .recorder { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .rec {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    padding: 0.6rem 1.1rem;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius);
+    font-size: var(--step--1);
+    cursor: pointer;
+    transition: border-color 0.2s var(--ease);
+  }
+  .rec:hover { border-color: var(--accent); }
+  .bulb { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
+  .rec[data-active] .bulb { animation: pulse 1s ease-in-out infinite; }
+  .timer { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-faint); margin: 0; }
+  audio { width: 100%; margin-top: 0.9rem; height: 38px; }
+
+  /* --- upload ------------------------------------------------------------- */
+  .drop {
+    display: grid; gap: 0.3rem; place-items: center;
+    padding: 2rem 1rem;
+    border: 1px dashed var(--rule-strong);
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+  }
+  .drop:hover, .drop[data-over] { border-color: var(--accent); background: var(--accent-wash); }
+  .drop input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .dlabel { font-size: var(--step--1); }
+
+  /* --- text --------------------------------------------------------------- */
+  .modes { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1.2rem; }
+  .modes button {
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.18s var(--ease);
+  }
+  .modes button:hover { border-color: var(--rule-strong); color: var(--ink); }
+  .modes button[aria-pressed='true'] {
+    background: var(--ink); color: var(--paper); border-color: var(--ink);
+  }
+
+  textarea {
+    width: 100%;
+    margin-top: 0.9rem;
+    padding: 0.9rem 1rem;
+    font-size: var(--step-1);
+    line-height: 1.7;
+    background: var(--paper-sunk);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    resize: vertical;
+    min-height: 5.5rem;
+  }
+  textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+
+  .keyhelp { margin-top: 0.9rem; }
+  .keyhelp button {
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--rule-strong);
+    padding: 0 0 2px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .keyhelp button:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .keyhelp figure { margin: 0.8rem 0 0; }
+  .keyhelp img {
+    width: 100%; height: auto; display: block;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: #fff;
+  }
+  .keyhelp figcaption {
+    font-size: 0.72rem; color: var(--ink-faint); margin-top: 0.4rem;
+  }
+
+  .meter { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 0.5rem; }
+  .meter .hint { margin: 0; }
+  .count { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint); margin: 0; flex: none; }
+  code { font-family: var(--font-mono); font-size: 0.9em; background: var(--paper-sunk); padding: 0.05em 0.3em; border-radius: 2px; }
+
+  .warn {
+    margin-top: 0.8rem;
+    padding: 0.55rem 0.8rem;
+    font-size: var(--step--1);
+    color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 9%, transparent);
+    border-left: 2px solid var(--warn);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .preset-label { margin-top: 1.6rem; }
+  .presets { list-style: none; margin: 0.7rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+  .presets button {
+    width: 100%;
+    display: flex; align-items: baseline; gap: 0.9rem; flex-wrap: wrap;
+    text-align: left;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 0.55rem 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+  }
+  .presets button:hover { border-color: var(--accent); background: var(--accent-wash); }
+  .presets .np { font-size: var(--step-0); }
+  .presets .en { font-size: 0.74rem; color: var(--ink-faint); }
+
+  /* --- go ----------------------------------------------------------------- */
+  .go { display: grid; gap: 1rem; }
+  .synth {
+    justify-self: start;
+    display: inline-flex; align-items: center; gap: 0.7rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    border-radius: var(--radius);
+    font-size: var(--step-0);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s var(--ease), transform 0.12s var(--ease-out-back);
+  }
+  .synth:hover:not(:disabled) { background: var(--accent-deep); }
+  .synth:active:not(:disabled) { transform: translateY(1px); }
+  .synth:disabled { opacity: 0.5; cursor: not-allowed; }
+  :root[data-theme='dark'] .synth { color: #1a0d0a; }
+
+  .progress { display: grid; gap: 0.5rem; max-width: 34rem; }
+  .track { height: 3px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+  .fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.35s var(--ease);
+  }
+  .plabel {
+    display: flex; justify-content: space-between; gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  .error {
+    padding: 0.7rem 0.9rem;
+    font-size: var(--step--1);
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border-left: 2px solid var(--danger);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: 0;
+  }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+</style>

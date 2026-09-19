@@ -1,0 +1,113 @@
+---
+---
+<header class="masthead">
+  <div class="shell bar">
+    <a class="wordmark" href="/">
+      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+        <g stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+          <path d="M4 16v0"/><path d="M11 10v12"/><path d="M16 5v22"/>
+          <path d="M21 12v8"/><path d="M28 16v0"/>
+        </g>
+      </svg>
+      <span>Nepali Voice Cloning</span>
+    </a>
+
+    <div class="tools">
+      <p class="status" data-backend-status aria-live="polite">
+        <span class="dot" data-state="probing"></span>
+        <span data-backend-label>checking model server</span>
+      </p>
+
+      <button class="toggle" type="button" data-theme-toggle aria-label="Switch colour theme">
+        <svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7" stroke-linecap="round"/>
+        </svg>
+        <svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <path d="M20.5 14.2A8.6 8.6 0 1 1 9.8 3.5a6.9 6.9 0 0 0 10.7 10.7Z" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <hr class="rule" />
+</header>
+
+<style>
+  .masthead {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+    backdrop-filter: blur(12px) saturate(1.4);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 0.85rem;
+  }
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+  .wordmark svg { color: var(--accent); flex: none; }
+  .wordmark:hover { color: var(--ink); }
+
+  .tools { display: flex; align-items: center; gap: 0.9rem; }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+    text-transform: lowercase;
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+    flex: none;
+  }
+  .dot[data-state='probing'] { animation: pulse 1.4s ease-in-out infinite; }
+  .dot[data-state='ready'] { background: var(--ok); }
+  .dot[data-state='waking'] { background: var(--warn); animation: pulse 1.4s ease-in-out infinite; }
+  .dot[data-state='down'] { background: var(--danger); }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+  .toggle {
+    display: grid;
+    place-items: center;
+    width: 32px; height: 32px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: border-color 0.2s var(--ease), color 0.2s var(--ease);
+  }
+  .toggle:hover { border-color: var(--rule-strong); color: var(--ink); }
+  .toggle svg { grid-area: 1 / 1; }
+  .toggle .moon { display: none; }
+  :root[data-theme='dark'] .toggle .sun { display: none; }
+  :root[data-theme='dark'] .toggle .moon { display: block; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .toggle .sun { display: none; }
+    :root:not([data-theme='light']) .toggle .moon { display: block; }
+  }
+
+  @media (max-width: 34rem) {
+    .status { display: none; }
+  }
+</style>

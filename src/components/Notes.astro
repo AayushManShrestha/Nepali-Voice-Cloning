@@ -1,0 +1,98 @@
+---
+---
+<section class="notes" id="notes">
+  <div class="shell">
+    <header class="head">
+      <p class="eyebrow">Under the hood</p>
+      <h2>Things worth knowing.</h2>
+    </header>
+
+    <div class="grid">
+      <article>
+        <h3>It is a <em>romanised</em> Nepali model</h3>
+        <p>
+          The synthesizer&rsquo;s vocabulary is 68 ASCII symbols &mdash; the stock Tacotron
+          set. Devanagari never reaches the network: the text front-end runs
+          <code>unidecode</code> first, so <span class="deva">नमस्ते</span> becomes
+          <code>namaste</code> before embedding lookup. The Preeti and romanised keyboards
+          above are typing aids for the human, not the model.
+        </p>
+      </article>
+
+      <article>
+        <h3>Numbers get dropped</h3>
+        <p>
+          Digits aren&rsquo;t in those 68 symbols and nothing expands them, so
+          <span class="deva">२०२४</span> transliterates to <code>2024</code> and then
+          vanishes character by character. The studio warns you rather than letting it
+          fail silently. Proper Nepali numeral expansion is genuinely hard &mdash; the
+          words above twenty are irregular &mdash; so it is listed as future work rather
+          than half-done.
+        </p>
+      </article>
+
+      <article>
+        <h3>Nothing was trained on these speakers</h3>
+        <p>
+          The encoder was trained for speaker <em>verification</em>, not synthesis. It
+          learned to map any voice to a point in 256-d space where the same person lands
+          in the same place. That generalises to voices it has never heard, which is what
+          makes five seconds enough.
+        </p>
+      </article>
+
+      <article>
+        <h3>Two CPU cores, no GPU</h3>
+        <p>
+          The model server is a free Hugging Face Space. The vocoder is autoregressive
+          &mdash; it samples 16,000 values per second of audio, in sequence &mdash; so
+          longer text costs proportionally more. A daily cron keeps the Space awake, since
+          a cold start means loading roughly 490&nbsp;MB of weights.
+        </p>
+      </article>
+
+      <article>
+        <h3>Quality is honest, not cherry-picked</h3>
+        <p>
+          Output is audibly synthetic, and attention sometimes loses the diagonal on long
+          or unusual input &mdash; you can watch that happen in the alignment plot.
+          A separate listening study measured how close the clones actually get.
+        </p>
+      </article>
+
+      <article>
+        <h3>Output is non-deterministic</h3>
+        <p>
+          The decoder&rsquo;s prenet applies dropout at inference time, not just during
+          training. Synthesising the same sentence twice gives two slightly different
+          readings &mdash; inherited from the original architecture, and audible if you
+          run it back to back.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  .notes { padding-block: clamp(3rem, 6vw, 5rem); background: var(--paper-sunk); }
+  .head { margin-bottom: clamp(1.8rem, 3vw, 2.6rem); }
+  h2 { font-size: var(--step-3); margin-top: 0.4em; }
+
+  .grid {
+    display: grid;
+    gap: clamp(1.4rem, 3vw, 2.2rem) clamp(1.8rem, 4vw, 3rem);
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  }
+  article { border-top: 1px solid var(--rule-strong); padding-top: 1rem; }
+  h3 { font-size: var(--step-1); margin-bottom: 0.55rem; }
+  h3 em { font-style: italic; color: var(--accent); }
+  p { color: var(--ink-soft); font-size: var(--step--1); line-height: 1.65; }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 0.05em 0.32em;
+    border-radius: 2px;
+  }
+</style>
