@@ -8,7 +8,7 @@ import nepalify from 'nepalify';
 import { checkHealth, estimateWithQueue, synthesize, STAGES } from './api';
 import type { JobStatus, SynthesisResult } from './api';
 import {
-  alignmentStops,
+  RAMPS,
   base64ToBytes,
   computePeaks,
   decodeAudio,
@@ -339,7 +339,7 @@ class Studio {
       this.queuedAt = null;
       this.tickEta(Date.now());
 
-      const result = await synthesize(text, base64, (status) => this.onProgress(status));
+      const result = await synthesize(text, base64, (status) => this.onProgress(status), undefined, true);
       await this.render(result, bytes, label);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -484,7 +484,12 @@ class Studio {
     const clonedBytes = base64ToBytes(result.audio);
     await Promise.all([
       mountPlayer('reference', referenceBytes, referenceLabel, 'reference.wav'),
-      mountPlayer('cloned', clonedBytes.buffer as ArrayBuffer, `${result.duration}s · ${result.sample_rate} Hz`, 'cloned.wav'),
+      mountPlayer(
+        'cloned',
+        clonedBytes.buffer as ArrayBuffer,
+        `${result.duration}s · ${result.sample_rate} Hz`,
+        'cloned.wav',
+      ),
     ]);
 
     redrawPlots(result);
@@ -497,7 +502,8 @@ class Studio {
    Players and plots (module scope so theme changes can re-run them)
    -------------------------------------------------------------------------- */
 let latest: SynthesisResult | null = null;
-const peakCache = new Map<string, Float32Array>();
+let showEmbedValues = false;
+const peakCache = new Map<string, { peaks: Float32Array; duration: number }>();
 const objectUrls = new Map<string, string>();
 
 function formatTime(seconds: number): string {
@@ -522,8 +528,7 @@ async function mountPlayer(
 
   const previous = objectUrls.get(which);
   if (previous) URL.revokeObjectURL(previous);
-  const blob = new Blob([bytes], { type: 'audio/wav' });
-  const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
   objectUrls.set(which, url);
   audio.src = url;
   if (name) name.textContent = subtitle;
@@ -534,55 +539,99 @@ async function mountPlayer(
   }
 
   const { samples, duration } = await decodeAudio(bytes);
-  const peaks = computePeaks(samples, Math.max(160, Math.round(canvas.clientWidth)));
-  peakCache.set(which, peaks);
-  drawWaveform(canvas, peaks, -1);
+  const peaks = computePeaks(samples, Math.max(200, Math.round(canvas.clientWidth / 2)));
+  peakCache.set(which, { peaks, duration });
+  drawWaveform(canvas, peaks, { duration });
   if (dur) dur.textContent = formatTime(duration);
 
-  play.onclick = () => {
-    if (audio.paused) void audio.play();
-    else audio.pause();
-  };
+  play.onclick = () => (audio.paused ? void audio.play() : audio.pause());
   audio.onplay = () => play.setAttribute('data-playing', '');
   audio.onpause = () => play.removeAttribute('data-playing');
   audio.onended = () => {
     play.removeAttribute('data-playing');
-    drawWaveform(canvas, peaks, -1);
+    drawWaveform(canvas, peaks, { duration });
   };
   audio.ontimeupdate = () => {
     if (time) time.textContent = formatTime(audio.currentTime);
-    drawWaveform(canvas, peaks, audio.currentTime / (audio.duration || 1));
+    drawWaveform(canvas, peaks, {
+      duration,
+      playhead: audio.currentTime / (audio.duration || 1),
+    });
   };
   canvas.onclick = (event) => {
     const rect = canvas.getBoundingClientRect();
-    audio.currentTime = ((event.clientX - rect.left) / rect.width) * (audio.duration || 0);
+    // The plot is inset by the axis margins; map the click onto the plot area.
+    const frac = (event.clientX - rect.left - 46) / (rect.width - 58);
+    audio.currentTime = Math.min(1, Math.max(0, frac)) * (audio.duration || 0);
   };
+}
+
+/** Cosine similarity between the reference and re-extracted embeddings. */
+function cosine(a: number[], b: number[]): number {
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) || 1);
 }
 
 function redrawPlots(result: SynthesisResult): void {
   latest = result;
-  const mel = $<HTMLCanvasElement>('[data-plot="mel"]');
-  const align = $<HTMLCanvasElement>('[data-plot="alignment"]');
-  const embed = $<HTMLCanvasElement>('[data-plot="embedding"]');
 
-  if (mel) {
-    drawMatrix(mel, result.mel, { flipY: true });
-    const shape = $<HTMLElement>('[data-shape="mel"]');
-    if (shape) shape.textContent = `${result.mel.shape[0]} × ${result.mel.shape[1]}`;
-  }
-  if (align) {
-    drawMatrix(align, result.alignment, { stops: alignmentStops(), flipY: true, smooth: false });
-    const shape = $<HTMLElement>('[data-shape="alignment"]');
-    if (shape) shape.textContent = `${result.alignment.shape[0]} × ${result.alignment.shape[1]}`;
-  }
-  if (embed) drawEmbedding(embed, result.embedding);
+  const melOriginal = $<HTMLCanvasElement>('[data-plot="mel-original"]');
+  const melCloned = $<HTMLCanvasElement>('[data-plot="mel-cloned"]');
+  const alignment = $<HTMLCanvasElement>('[data-plot="alignment"]');
+  const embedOriginal = $<HTMLCanvasElement>('[data-plot="embedding-original"]');
+  const embedCloned = $<HTMLCanvasElement>('[data-plot="embedding-cloned"]');
 
-  for (const [which, peaks] of peakCache) {
+  const melAxes = { xLabel: 'Time Steps', yLabel: 'Mel Channels', stops: RAMPS.magma };
+  if (melOriginal && result.reference_mel) drawMatrix(melOriginal, result.reference_mel, melAxes);
+  if (melCloned) drawMatrix(melCloned, result.mel, melAxes);
+
+  if (alignment) {
+    // The array is (decoder steps, encoder steps). Transpose so decoder time runs
+    // along x, which is how alignment plots are conventionally read.
+    drawMatrix(alignment, result.alignment, {
+      transpose: true,
+      flipY: true,
+      smooth: false,
+      stops: RAMPS.viridis,
+      xLabel: 'Decoder Time Steps',
+      yLabel: 'Encoder Time Steps',
+    });
+  }
+
+  if (embedOriginal) drawEmbedding(embedOriginal, result.embedding, { showValues: showEmbedValues });
+  if (embedCloned) {
+    drawEmbedding(embedCloned, result.cloned_embedding ?? result.embedding, {
+      showValues: showEmbedValues,
+    });
+  }
+
+  const similarity = $<HTMLElement>('[data-embed-similarity]');
+  if (similarity) {
+    if (result.cloned_embedding) {
+      const score = cosine(result.embedding, result.cloned_embedding);
+      similarity.innerHTML =
+        `cosine similarity between the two embeddings: <b>${score.toFixed(3)}</b> ` +
+        `&mdash; 1.000 would mean the encoder considers them the same speaker`;
+    } else {
+      similarity.textContent = '';
+    }
+  }
+
+  for (const [which, { peaks, duration }] of peakCache) {
     const canvas = $<HTMLCanvasElement>(`[data-wave="${which}"]`);
     const audio = $<HTMLAudioElement>(`[data-audio="${which}"]`);
-    if (canvas) {
-      drawWaveform(canvas, peaks, audio && !audio.paused ? audio.currentTime / (audio.duration || 1) : -1);
-    }
+    if (!canvas) continue;
+    drawWaveform(canvas, peaks, {
+      duration,
+      playhead: audio && !audio.paused ? audio.currentTime / (audio.duration || 1) : -1,
+    });
   }
 }
 
@@ -611,6 +660,12 @@ if (form) new Studio(form);
 // The colour ramps read CSS variables, so the plots must be redrawn when the theme
 // flips. Registered once, against whatever the most recent result is.
 document.addEventListener('themechange', () => {
+  if (latest) redrawPlots(latest);
+});
+
+const embedToggle = $<HTMLInputElement>('[data-embed-values]');
+embedToggle?.addEventListener('change', () => {
+  showEmbedValues = embedToggle.checked;
   if (latest) redrawPlots(latest);
 });
 

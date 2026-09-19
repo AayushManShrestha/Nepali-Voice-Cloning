@@ -66,11 +66,22 @@ export async function checkHealth(timeoutMs = 8000): Promise<Health | null> {
   }
 }
 
-async function createJob(text: string, audioBase64: string): Promise<string> {
+async function createJob(
+  text: string,
+  audioBase64: string,
+  wantClonedEmbedding: boolean,
+): Promise<string> {
   const response = await fetch(`${SPACE}/api/v2/jobs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input_text: text, cloning_audio: audioBase64 }),
+    body: JSON.stringify({
+      input_text: text,
+      cloning_audio: audioBase64,
+      // A second encoder pass over the generated audio. Measured at ~0.04s, which is
+      // nothing next to the vocoder, and it is what lets the UI show the original and
+      // cloned embeddings side by side.
+      want_cloned_embedding: wantClonedEmbedding,
+    }),
   });
 
   if (!response.ok) {
@@ -98,8 +109,9 @@ export async function synthesize(
   audioBase64: string,
   onStatus: (status: JobStatus) => void,
   signal?: AbortSignal,
+  wantClonedEmbedding = false,
 ): Promise<SynthesisResult> {
-  const id = await createJob(text, audioBase64);
+  const id = await createJob(text, audioBase64, wantClonedEmbedding);
 
   return new Promise<SynthesisResult>((resolve, reject) => {
     let settled = false;

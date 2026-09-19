@@ -1,10 +1,9 @@
 /**
  * Canvas renderers for the synthesis output.
  *
- * The backend used to return seven matplotlib PNGs -- 374 KB of raster, 86% of the
- * response, and the bulk of its latency. It now returns the underlying arrays as
- * base64 uint8 and we draw them here, which is ~40x smaller and lets the plots be
- * interactive (hover readouts, a playhead locked to audio playback).
+ * The backend returns raw arrays rather than rendered PNGs, so everything here is drawn
+ * client-side: axes, ticks, colour bars and all. That keeps the response ~1.6-7.6x
+ * smaller and lets the plots respond to the theme and to audio playback.
  */
 
 export interface Matrix {
@@ -13,12 +12,7 @@ export interface Matrix {
   data: string;
 }
 
-/** Decode a base64 uint8 payload into its 2-D shape. */
-export function decodeMatrix(block: Matrix): {
-  rows: number;
-  cols: number;
-  values: Uint8Array;
-} {
+export function decodeMatrix(block: Matrix): { rows: number; cols: number; values: Uint8Array } {
   const binary = atob(block.data);
   const values = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) values[i] = binary.charCodeAt(i);
@@ -26,91 +20,221 @@ export function decodeMatrix(block: Matrix): {
   return { rows, cols, values };
 }
 
-/* --- colour ramps ---------------------------------------------------------- */
+/* --- colour ------------------------------------------------------------- */
 
-// Magma, sampled at 9 stops. Perceptually uniform, prints legibly in greyscale, and
-// its warm high end sits naturally beside the vermilion accent.
+// Magma: perceptually uniform, legible in greyscale, warm high end.
 const MAGMA: Array<[number, number, number]> = [
   [0, 0, 4], [28, 16, 68], [79, 18, 123], [129, 37, 129], [181, 54, 122],
   [229, 80, 100], [251, 135, 97], [254, 194, 135], [252, 253, 191],
 ];
 
+// Viridis, for the alignment plot -- matches the original matplotlib output.
+const VIRIDIS: Array<[number, number, number]> = [
+  [68, 1, 84], [72, 40, 120], [62, 74, 137], [49, 104, 142], [38, 130, 142],
+  [31, 158, 137], [53, 183, 121], [109, 205, 89], [180, 222, 44], [253, 231, 37],
+];
+
+export const RAMPS = { magma: MAGMA, viridis: VIRIDIS };
+
 function ramp(stops: Array<[number, number, number]>, t: number): [number, number, number] {
-  const clamped = t <= 0 ? 0 : t >= 1 ? 1 : t;
-  const scaled = clamped * (stops.length - 1);
+  const c = t <= 0 ? 0 : t >= 1 ? 1 : t;
+  const scaled = c * (stops.length - 1);
   const i = Math.min(stops.length - 2, Math.floor(scaled));
   const f = scaled - i;
   const a = stops[i];
   const b = stops[i + 1];
-  return [
-    a[0] + (b[0] - a[0]) * f,
-    a[1] + (b[1] - a[1]) * f,
-    a[2] + (b[2] - a[2]) * f,
-  ];
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 }
 
 function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function parseColor(value: string): [number, number, number] {
-  const probe = document.createElement('canvas').getContext('2d')!;
-  probe.fillStyle = value;
-  const hex = probe.fillStyle as string;
-  if (hex.startsWith('#')) {
-    return [
-      parseInt(hex.slice(1, 3), 16),
-      parseInt(hex.slice(3, 5), 16),
-      parseInt(hex.slice(5, 7), 16),
-    ];
-  }
-  const nums = hex.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0];
-  return [nums[0], nums[1], nums[2]];
-}
+/* --- canvas plumbing ----------------------------------------------------- */
 
-/* --- canvas plumbing ------------------------------------------------------- */
+interface Box { x: number; y: number; w: number; h: number }
 
-function fit(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+function fit(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w: number; h: number } {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const rect = canvas.getBoundingClientRect();
-  const width = Math.max(1, Math.round(rect.width * dpr));
-  const height = Math.max(1, Math.round(rect.height * dpr));
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
+  const w = Math.max(1, Math.round(rect.width));
+  const h = Math.max(1, Math.round(rect.height));
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
   }
   const ctx = canvas.getContext('2d')!;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, rect.width, rect.height);
-  return ctx;
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
 }
 
-/**
- * Render a quantised matrix.
- *
- * `flipY` puts row 0 at the bottom, matching `origin='lower'` in the original
- * matplotlib plots -- for a mel spectrogram, low frequencies belong at the bottom.
- */
-export function drawMatrix(
-  canvas: HTMLCanvasElement,
-  block: Matrix,
-  opts: { stops?: Array<[number, number, number]>; flipY?: boolean; smooth?: boolean } = {},
-): void {
+function monoFont(px: number): string {
+  const family = cssVar('--font-mono') || 'monospace';
+  return `${px}px ${family}`;
+}
+
+/** Tick values at 1/2/5 x 10^n spacing, the standard "nice number" choice. */
+function niceTicks(min: number, max: number, target = 6): number[] {
+  const span = max - min;
+  if (span <= 0) return [min];
+  const raw = span / target;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const norm = raw / mag;
+  const step = (norm >= 5 ? 10 : norm >= 2 ? 5 : norm >= 1 ? 2 : 1) * mag;
+  const ticks: number[] = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + step * 1e-6; v += step) {
+    ticks.push(Math.abs(v) < step * 1e-6 ? 0 : v);
+  }
+  return ticks;
+}
+
+interface AxisOpts {
+  xLabel?: string;
+  yLabel?: string;
+  xMax?: number;
+  yMax?: number;
+  xMin?: number;
+  yMin?: number;
+  colorbar?: [number, number];
+  stops?: Array<[number, number, number]>;
+}
+
+/** Draw the frame, ticks, numeric labels and axis titles. Returns the plot rectangle. */
+function drawAxes(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  opts: AxisOpts,
+): Box {
+  const ink = cssVar('--ink-faint') || '#888';
+  const rule = cssVar('--rule-strong') || '#ccc';
+  const hasBar = !!opts.colorbar;
+
+  const box: Box = {
+    x: opts.yLabel ? 46 : 12,
+    y: 10,
+    w: 0,
+    h: 0,
+  };
+  box.w = w - box.x - (hasBar ? 54 : 12);
+  box.h = h - box.y - (opts.xLabel ? 38 : 14);
+
+  ctx.save();
+  ctx.font = monoFont(9.5);
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = rule;
+  ctx.lineWidth = 1;
+
+  // frame
+  ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w, box.h);
+
+  // x ticks
+  const xMin = opts.xMin ?? 0;
+  const xMax = opts.xMax ?? 1;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (const t of niceTicks(xMin, xMax)) {
+    const px = box.x + ((t - xMin) / (xMax - xMin || 1)) * box.w;
+    ctx.beginPath();
+    ctx.moveTo(px, box.y + box.h);
+    ctx.lineTo(px, box.y + box.h + 4);
+    ctx.stroke();
+    ctx.fillText(formatTick(t), px, box.y + box.h + 6);
+  }
+
+  // y ticks
+  const yMin = opts.yMin ?? 0;
+  const yMax = opts.yMax ?? 1;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (const t of niceTicks(yMin, yMax)) {
+    const py = box.y + box.h - ((t - yMin) / (yMax - yMin || 1)) * box.h;
+    ctx.beginPath();
+    ctx.moveTo(box.x - 4, py);
+    ctx.lineTo(box.x, py);
+    ctx.stroke();
+    ctx.fillText(formatTick(t), box.x - 6, py);
+  }
+
+  // titles
+  ctx.font = monoFont(10);
+  if (opts.xLabel) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(opts.xLabel, box.x + box.w / 2, h - 2);
+  }
+  if (opts.yLabel) {
+    ctx.save();
+    ctx.translate(11, box.y + box.h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(opts.yLabel, 0, 0);
+    ctx.restore();
+  }
+
+  // colour bar
+  if (opts.colorbar) {
+    const stops = opts.stops ?? MAGMA;
+    const bx = box.x + box.w + 12;
+    const bw = 10;
+    for (let i = 0; i < box.h; i += 1) {
+      const [r, g, b] = ramp(stops, 1 - i / box.h);
+      ctx.fillStyle = `rgb(${r} ${g} ${b})`;
+      ctx.fillRect(bx, box.y + i, bw, 1);
+    }
+    ctx.strokeRect(bx + 0.5, box.y + 0.5, bw, box.h);
+    ctx.fillStyle = ink;
+    ctx.font = monoFont(9);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const [lo, hi] = opts.colorbar;
+    for (const [frac, val] of [[0, hi], [0.5, (hi + lo) / 2], [1, lo]] as const) {
+      ctx.fillText(formatTick(val), bx + bw + 4, box.y + frac * box.h);
+    }
+  }
+
+  ctx.restore();
+  return box;
+}
+
+function formatTick(v: number): string {
+  if (Number.isInteger(v)) return String(v);
+  return Math.abs(v) < 1 ? v.toFixed(2) : v.toFixed(1);
+}
+
+/* --- matrix plots -------------------------------------------------------- */
+
+export interface MatrixOpts extends AxisOpts {
+  flipY?: boolean;
+  transpose?: boolean;
+  smooth?: boolean;
+}
+
+export function drawMatrix(canvas: HTMLCanvasElement, block: Matrix, opts: MatrixOpts = {}): void {
   const { rows, cols, values } = decodeMatrix(block);
   const stops = opts.stops ?? MAGMA;
   const flipY = opts.flipY ?? true;
 
+  // Logical display dimensions after an optional transpose.
+  const dw = opts.transpose ? rows : cols;
+  const dh = opts.transpose ? cols : rows;
+
   const buffer = document.createElement('canvas');
-  buffer.width = cols;
-  buffer.height = rows;
+  buffer.width = dw;
+  buffer.height = dh;
   const bctx = buffer.getContext('2d')!;
-  const image = bctx.createImageData(cols, rows);
+  const image = bctx.createImageData(dw, dh);
 
   for (let r = 0; r < rows; r += 1) {
-    const targetRow = flipY ? rows - 1 - r : r;
     for (let c = 0; c < cols; c += 1) {
-      const [red, green, blue] = ramp(stops, values[r * cols + c] / 255);
-      const o = (targetRow * cols + c) * 4;
+      const v = values[r * cols + c];
+      const dx = opts.transpose ? r : c;
+      const dyRaw = opts.transpose ? c : r;
+      const dy = flipY ? dh - 1 - dyRaw : dyRaw;
+      const [red, green, blue] = ramp(stops, v / 255);
+      const o = (dy * dw + dx) * 4;
       image.data[o] = red;
       image.data[o + 1] = green;
       image.data[o + 2] = blue;
@@ -119,23 +243,27 @@ export function drawMatrix(
   }
   bctx.putImageData(image, 0, 0);
 
-  const rect = canvas.getBoundingClientRect();
-  const ctx = fit(canvas);
+  const { ctx, w, h } = fit(canvas);
+  const box = drawAxes(ctx, w, h, {
+    ...opts,
+    xMax: opts.xMax ?? dw,
+    yMax: opts.yMax ?? dh,
+    colorbar: opts.colorbar ?? block.range,
+    stops,
+  });
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(box.x, box.y, box.w, box.h);
+  ctx.clip();
   ctx.imageSmoothingEnabled = opts.smooth ?? true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(buffer, 0, 0, rect.width, rect.height);
+  ctx.drawImage(buffer, box.x, box.y, box.w, box.h);
+  ctx.restore();
 }
 
-/** Alignment weights read better as ink-to-accent than as a spectral ramp. */
-export function alignmentStops(): Array<[number, number, number]> {
-  const bg = parseColor(cssVar('--viz-bg') || '#ffffff');
-  const accent = parseColor(cssVar('--accent') || '#c0392b');
-  return [bg, accent];
-}
+/* --- waveform ------------------------------------------------------------ */
 
-/* --- waveform -------------------------------------------------------------- */
-
-/** Reduce a long signal to per-pixel min/max pairs, the standard way to draw audio. */
 export function computePeaks(samples: Float32Array, buckets: number): Float32Array {
   const peaks = new Float32Array(buckets * 2);
   const stride = samples.length / buckets;
@@ -158,76 +286,128 @@ export function computePeaks(samples: Float32Array, buckets: number): Float32Arr
 export function drawWaveform(
   canvas: HTMLCanvasElement,
   peaks: Float32Array,
-  playhead = -1,
+  opts: { duration?: number; playhead?: number; axes?: boolean } = {},
 ): void {
-  const rect = canvas.getBoundingClientRect();
-  const ctx = fit(canvas);
-  const buckets = peaks.length / 2;
-  const mid = rect.height / 2;
-  const barWidth = rect.width / buckets;
+  const { ctx, w, h } = fit(canvas);
+  const duration = opts.duration ?? 1;
+  const playhead = opts.playhead ?? -1;
 
+  const box = opts.axes === false
+    ? { x: 0, y: 0, w, h }
+    : drawAxes(ctx, w, h, {
+        xLabel: 'Time (s)',
+        yLabel: 'Amplitude',
+        xMax: duration,
+        yMin: -1,
+        yMax: 1,
+      });
+
+  const buckets = peaks.length / 2;
+  const mid = box.y + box.h / 2;
+  const half = (box.h / 2) * 0.96;
+
+  // zero line
   ctx.strokeStyle = cssVar('--viz-grid') || 'rgba(0,0,0,0.08)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(0, mid);
-  ctx.lineTo(rect.width, mid);
+  ctx.moveTo(box.x, mid);
+  ctx.lineTo(box.x + box.w, mid);
   ctx.stroke();
 
-  const played = playhead >= 0 ? playhead * rect.width : -1;
-  for (let b = 0; b < buckets; b += 1) {
-    const x = b * barWidth;
-    ctx.fillStyle =
-      played >= 0 && x <= played ? cssVar('--accent') : cssVar('--wave-ghost');
-    const top = mid - peaks[b * 2 + 1] * mid * 0.94;
-    const bottom = mid - peaks[b * 2] * mid * 0.94;
-    ctx.fillRect(x, top, Math.max(barWidth * 0.8, 0.6), Math.max(bottom - top, 1));
-  }
+  // A filled min/max envelope rather than one rect per bucket. At these plot heights a
+  // per-bucket bar is sub-pixel wide and all but disappears once alpha is applied.
+  const envelope = (from: number, to: number): Path2D => {
+    const path = new Path2D();
+    path.moveTo(box.x + (from / buckets) * box.w, mid - peaks[from * 2 + 1] * half);
+    for (let b = from; b < to; b += 1) {
+      path.lineTo(box.x + (b / buckets) * box.w, mid - peaks[b * 2 + 1] * half);
+    }
+    for (let b = to - 1; b >= from; b -= 1) {
+      path.lineTo(box.x + (b / buckets) * box.w, mid - peaks[b * 2] * half);
+    }
+    path.closePath();
+    return path;
+  };
 
-  if (played >= 0) {
+  const split = playhead >= 0 ? Math.round(playhead * buckets) : 0;
+
+  ctx.fillStyle = cssVar('--wave') || '#333';
+  ctx.globalAlpha = 0.55;
+  ctx.fill(envelope(Math.max(0, split - 1), buckets));
+  ctx.globalAlpha = 1;
+
+  if (playhead >= 0 && split > 0) {
+    ctx.fillStyle = cssVar('--accent');
+    ctx.fill(envelope(0, split));
+    const px = box.x + playhead * box.w;
     ctx.strokeStyle = cssVar('--accent');
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(played, 0);
-    ctx.lineTo(played, rect.height);
+    ctx.moveTo(px, box.y);
+    ctx.lineTo(px, box.y + box.h);
     ctx.stroke();
   }
 }
 
-/* --- speaker embedding ----------------------------------------------------- */
+/* --- speaker embedding --------------------------------------------------- */
 
 /**
  * The 256-d GE2E embedding as a 16x16 grid.
  *
- * The old version printed the number into every cell -- 256 `ax.text` calls per
- * heatmap, twice per request. The grid alone carries the same structure.
+ * `showValues` prints the number in each cell, matching the original matplotlib
+ * heatmap; with it off the colour alone carries the structure, which reads better
+ * when comparing two embeddings side by side.
  */
-export function drawEmbedding(canvas: HTMLCanvasElement, embedding: number[]): void {
+export function drawEmbedding(
+  canvas: HTMLCanvasElement,
+  embedding: number[],
+  opts: { showValues?: boolean } = {},
+): void {
   const side = Math.round(Math.sqrt(embedding.length));
-  const rect = canvas.getBoundingClientRect();
-  const ctx = fit(canvas);
-  const cell = Math.min(rect.width, rect.height) / side;
-  const offsetX = (rect.width - cell * side) / 2;
-  const offsetY = (rect.height - cell * side) / 2;
+  const { ctx, w, h } = fit(canvas);
+  const box = drawAxes(ctx, w, h, {
+    xLabel: 'Features',
+    yLabel: 'Features',
+    xMax: side,
+    yMax: side,
+  });
 
-  // GE2E embeddings are L2-normalised and non-negative; scale to the observed max
-  // so the structure is visible rather than washed out.
+  // Cells fill the plot area rather than being forced square: a 16x16 grid in a wide
+  // panel would otherwise occupy only the middle third, and the wider cell gives the
+  // "0.00" labels room to breathe.
+  const cellW = box.w / side;
+  const cellH = box.h / side;
   const peak = Math.max(...embedding.map(Math.abs)) || 1;
+
+  ctx.font = monoFont(Math.max(6, Math.min(9, cellW * 0.22, cellH * 0.5)));
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
 
   for (let i = 0; i < embedding.length; i += 1) {
     const row = Math.floor(i / side);
     const col = i % side;
-    const [r, g, b] = ramp(MAGMA, Math.abs(embedding[i]) / peak);
-    ctx.fillStyle = `rgb(${r} ${g} ${b})`;
-    ctx.fillRect(
-      offsetX + col * cell,
-      offsetY + row * cell,
-      Math.ceil(cell) - 0.5,
-      Math.ceil(cell) - 0.5,
-    );
+    const value = embedding[i];
+    const x = box.x + col * cellW;
+    const y = box.y + row * cellH;
+
+    if (opts.showValues) {
+      ctx.fillStyle = cssVar('--paper-raised') || '#fff';
+      ctx.fillRect(x, y, cellW, cellH);
+      ctx.strokeStyle = cssVar('--rule') || '#eee';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x + 0.25, y + 0.25, cellW - 0.5, cellH - 0.5);
+      ctx.fillStyle = cssVar('--ink') || '#000';
+      ctx.fillText(value.toFixed(2), x + cellW / 2, y + cellH / 2);
+    } else {
+      const [r, g, b] = ramp(MAGMA, Math.abs(value) / peak);
+      ctx.fillStyle = `rgb(${r} ${g} ${b})`;
+      ctx.fillRect(x, y, Math.ceil(cellW), Math.ceil(cellH));
+    }
   }
 }
 
-/** Decode a WAV/any browser-supported buffer to mono float samples. */
+/* --- audio --------------------------------------------------------------- */
+
 export async function decodeAudio(bytes: ArrayBuffer): Promise<{
   samples: Float32Array;
   sampleRate: number;
