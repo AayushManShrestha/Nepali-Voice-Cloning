@@ -10,7 +10,6 @@ import type { JobStatus, SynthesisResult } from './api';
 import {
   RAMPS,
   base64ToBytes,
-  embeddingCellAt,
   computePeaks,
   decodeAudio,
   drawEmbedding,
@@ -590,72 +589,77 @@ function cosine(a: number[], b: number[]): {
   return { value: dot / (normA * normB || 1), dot, normA, normB };
 }
 
-/** Hovered embedding dimension, mirrored across both grids. */
-let hoveredCell: number | null = null;
+type PlotKey =
+  | 'embedding-original' | 'embedding-cloned'
+  | 'mel-original' | 'mel-cloned'
+  | 'alignment'
+  | 'wave-reference' | 'wave-cloned';
 
-function wireEmbeddingHover(): void {
-  const readout = $<HTMLElement>('[data-embed-readout]');
-  for (const which of ['original', 'cloned'] as const) {
-    const canvas = $<HTMLCanvasElement>(`[data-plot="embedding-${which}"]`);
-    if (!canvas) continue;
-    canvas.style.cursor = 'crosshair';
-    canvas.addEventListener('mousemove', (event) => {
-      const hit = embeddingCellAt(canvas, event.clientX, event.clientY);
-      const next = hit ? hit.index : null;
-      if (next === hoveredCell) return;
-      hoveredCell = next;
-      if (readout && latest) {
-        if (hit) {
-          const o = latest.embedding[hit.index];
-          const c = (latest.cloned_embedding ?? latest.embedding)[hit.index];
-          readout.textContent =
-            `dim ${hit.index} (row ${hit.row}, col ${hit.col}) · ` +
-            `original ${o.toFixed(3)} · cloned ${c.toFixed(3)} · Δ ${(c - o).toFixed(3)}`;
-        } else {
-          readout.textContent = '';
-        }
-      }
-      if (latest) redrawPlots(latest);
-    });
-    canvas.addEventListener('mouseleave', () => {
-      hoveredCell = null;
-      if (readout) readout.textContent = '';
-      if (latest) redrawPlots(latest);
-    });
+/**
+ * Paint one plot onto any canvas. Shared by the inline figures and the fullscreen
+ * dialog, so an enlarged plot is genuinely re-rendered at the larger size rather
+ * than being a scaled-up bitmap.
+ */
+function paint(key: PlotKey, canvas: HTMLCanvasElement, result: SynthesisResult): void {
+  const melAxes = { xLabel: 'Time Steps', yLabel: 'Mel Channels', stops: RAMPS.magma };
+  switch (key) {
+    case 'mel-original':
+      if (result.reference_mel) drawMatrix(canvas, result.reference_mel, melAxes);
+      break;
+    case 'mel-cloned':
+      drawMatrix(canvas, result.mel, melAxes);
+      break;
+    case 'alignment':
+      // The array is (decoder steps, encoder steps). Transpose so decoder time runs
+      // along x, which is how alignment plots are conventionally read.
+      drawMatrix(canvas, result.alignment, {
+        transpose: true,
+        flipY: true,
+        smooth: false,
+        stops: RAMPS.viridis,
+        xLabel: 'Decoder Time Steps',
+        yLabel: 'Encoder Time Steps',
+      });
+      break;
+    case 'embedding-original':
+      drawEmbedding(canvas, result.embedding, { showValues: showEmbedValues });
+      break;
+    case 'embedding-cloned':
+      drawEmbedding(canvas, result.cloned_embedding ?? result.embedding, {
+        showValues: showEmbedValues,
+      });
+      break;
+    case 'wave-reference':
+    case 'wave-cloned': {
+      const which = key === 'wave-reference' ? 'reference' : 'cloned';
+      const cached = peakCache.get(which);
+      if (!cached) break;
+      const audio = $<HTMLAudioElement>(`[data-audio="${which}"]`);
+      drawWaveform(canvas, cached.peaks, {
+        duration: cached.duration,
+        playhead: audio && !audio.paused ? audio.currentTime / (audio.duration || 1) : -1,
+      });
+      break;
+    }
   }
 }
+
+const INLINE_PLOTS: PlotKey[] = [
+  'mel-original', 'mel-cloned', 'alignment', 'embedding-original', 'embedding-cloned',
+];
 
 function redrawPlots(result: SynthesisResult): void {
   latest = result;
 
-  const melOriginal = $<HTMLCanvasElement>('[data-plot="mel-original"]');
-  const melCloned = $<HTMLCanvasElement>('[data-plot="mel-cloned"]');
-  const alignment = $<HTMLCanvasElement>('[data-plot="alignment"]');
-  const embedOriginal = $<HTMLCanvasElement>('[data-plot="embedding-original"]');
-  const embedCloned = $<HTMLCanvasElement>('[data-plot="embedding-cloned"]');
-
-  const melAxes = { xLabel: 'Time Steps', yLabel: 'Mel Channels', stops: RAMPS.magma };
-  if (melOriginal && result.reference_mel) drawMatrix(melOriginal, result.reference_mel, melAxes);
-  if (melCloned) drawMatrix(melCloned, result.mel, melAxes);
-
-  if (alignment) {
-    // The array is (decoder steps, encoder steps). Transpose so decoder time runs
-    // along x, which is how alignment plots are conventionally read.
-    drawMatrix(alignment, result.alignment, {
-      transpose: true,
-      flipY: true,
-      smooth: false,
-      stops: RAMPS.viridis,
-      xLabel: 'Decoder Time Steps',
-      yLabel: 'Encoder Time Steps',
-    });
+  for (const key of INLINE_PLOTS) {
+    const canvas = $<HTMLCanvasElement>(`[data-plot="${key}"]`);
+    if (canvas) paint(key, canvas, result);
   }
 
-  const embedOpts = { showValues: showEmbedValues, highlight: hoveredCell };
-  if (embedOriginal) drawEmbedding(embedOriginal, result.embedding, embedOpts);
-  if (embedCloned) {
-    drawEmbedding(embedCloned, result.cloned_embedding ?? result.embedding, embedOpts);
-  }
+  // If the fullscreen view is open, keep it in sync (theme flips, value toggle).
+  const dialog = $<HTMLDialogElement>('[data-zoom]');
+  const zoomCanvas = $<HTMLCanvasElement>('[data-zoom-canvas]');
+  if (dialog?.open && zoomCanvas && openPlot) paint(openPlot, zoomCanvas, result);
 
   const cosBox = $<HTMLElement>('[data-cosine]');
   if (cosBox) {
@@ -675,15 +679,65 @@ function redrawPlots(result: SynthesisResult): void {
     }
   }
 
-  for (const [which, { peaks, duration }] of peakCache) {
+  for (const which of peakCache.keys()) {
     const canvas = $<HTMLCanvasElement>(`[data-wave="${which}"]`);
-    const audio = $<HTMLAudioElement>(`[data-audio="${which}"]`);
-    if (!canvas) continue;
-    drawWaveform(canvas, peaks, {
-      duration,
-      playhead: audio && !audio.paused ? audio.currentTime / (audio.duration || 1) : -1,
+    if (canvas) paint(`wave-${which}` as PlotKey, canvas, result);
+  }
+}
+
+/* --- fullscreen ----------------------------------------------------------- */
+
+let openPlot: PlotKey | null = null;
+
+function wireZoom(): void {
+  const dialog = $<HTMLDialogElement>('[data-zoom]');
+  const canvas = $<HTMLCanvasElement>('[data-zoom-canvas]');
+  const title = $<HTMLElement>('[data-zoom-title]');
+  if (!dialog || !canvas) return;
+
+  const render = () => {
+    if (openPlot && latest) paint(openPlot, canvas, latest);
+  };
+
+  const open = (key: PlotKey, label: string) => {
+    if (!latest) return;
+    openPlot = key;
+    if (title) title.textContent = label;
+    dialog.showModal();
+    // Wait for layout so the canvas has its final size before drawing into it.
+    requestAnimationFrame(render);
+  };
+
+  for (const button of $$<HTMLButtonElement>('[data-expand]')) {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      open(button.dataset.expand as PlotKey, button.dataset.expandTitle ?? 'Plot');
     });
   }
+
+  // Clicking a plot itself opens it too -- except the waveforms, where a click
+  // already means "seek".
+  for (const key of INLINE_PLOTS) {
+    const inline = $<HTMLCanvasElement>(`[data-plot="${key}"]`);
+    if (!inline) continue;
+    inline.style.cursor = 'zoom-in';
+    inline.addEventListener('click', () => {
+      const label = inline.closest('figure')?.querySelector('figcaption')?.textContent?.trim();
+      open(key, label ?? 'Plot');
+    });
+  }
+
+  $<HTMLButtonElement>('[data-zoom-close]')?.addEventListener('click', () => dialog.close());
+
+  // Click outside the panel closes it. <dialog> handles Escape natively.
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+  dialog.addEventListener('close', () => { openPlot = null; });
+
+  window.addEventListener('resize', () => {
+    if (dialog.open) render();
+  });
 }
 
 function renderTimings(timings: Record<string, number>): void {
@@ -714,7 +768,7 @@ document.addEventListener('themechange', () => {
   if (latest) redrawPlots(latest);
 });
 
-wireEmbeddingHover();
+wireZoom();
 
 const embedToggle = $<HTMLInputElement>('[data-embed-values]');
 embedToggle?.addEventListener('change', () => {

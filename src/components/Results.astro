@@ -33,22 +33,16 @@
       </header>
       <div class="pair">
         <figure>
-          <figcaption>Original speaker embedding</figcaption>
+          <figcaption>Original speaker embedding<button class="expand" type="button" data-expand="embedding-original" data-expand-title="original speaker embedding" aria-label="View original speaker embedding full screen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg></button></figcaption>
           <canvas data-plot="embedding-original" height="300" role="img"
                   aria-label="Speaker embedding of the reference audio"></canvas>
         </figure>
         <figure>
-          <figcaption class="cloned">Cloned speaker embedding</figcaption>
+          <figcaption class="cloned">Cloned speaker embedding<button class="expand" type="button" data-expand="embedding-cloned" data-expand-title="cloned speaker embedding" aria-label="View cloned speaker embedding full screen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg></button></figcaption>
           <canvas data-plot="embedding-cloned" height="300" role="img"
                   aria-label="Speaker embedding re-extracted from the cloned audio"></canvas>
         </figure>
       </div>
-      <p class="hoverhint">
-        Hover either grid to read a single dimension &mdash; the same cell highlights in
-        both, so you can compare them value by value.
-        <span class="readout" data-embed-readout></span>
-      </p>
-
       <div class="cosine" data-cosine hidden>
         <p class="cos-label">Cosine similarity</p>
         <div class="cos-formula">
@@ -86,19 +80,19 @@
       </header>
       <div class="pair">
         <figure>
-          <figcaption>Mel spectrogram &mdash; original</figcaption>
+          <figcaption>Mel spectrogram &mdash; original<button class="expand" type="button" data-expand="mel-original" data-expand-title="original mel spectrogram" aria-label="View original mel spectrogram full screen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg></button></figcaption>
           <canvas data-plot="mel-original" height="280" role="img"
                   aria-label="Mel spectrogram of the reference audio"></canvas>
         </figure>
         <figure>
-          <figcaption class="cloned">Mel spectrogram &mdash; cloned</figcaption>
+          <figcaption class="cloned">Mel spectrogram &mdash; cloned<button class="expand" type="button" data-expand="mel-cloned" data-expand-title="cloned mel spectrogram" aria-label="View cloned mel spectrogram full screen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg></button></figcaption>
           <canvas data-plot="mel-cloned" height="280" role="img"
                   aria-label="Mel spectrogram of the cloned audio"></canvas>
         </figure>
       </div>
 
       <figure class="full">
-        <figcaption>Attention alignment</figcaption>
+        <figcaption>Attention alignment<button class="expand" type="button" data-expand="alignment" data-expand-title="attention alignment" aria-label="View attention alignment full screen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg></button></figcaption>
         <p class="note">
           Which character the decoder attended to at each step. A clean diagonal means the
           model tracked the text; smearing or stalling means it lost its place. There is no
@@ -124,6 +118,11 @@
             <figcaption class={which === 'cloned' ? 'cloned' : undefined}>
               {which === 'reference' ? 'Original audio' : 'Cloned audio'}
               <span class="who" data-player-name={which}></span>
+              <button class="expand" type="button" data-expand={`wave-${which}`}
+                      data-expand-title={`${which} waveform`}
+                      aria-label={`View ${which} waveform full screen`}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>
+              </button>
             </figcaption>
             <canvas data-wave={which} height="220" role="img"
                     aria-label={`Waveform of the ${which} audio`}></canvas>
@@ -140,6 +139,17 @@
         ))}
       </div>
     </section>
+
+    <dialog class="zoom" data-zoom aria-label="Enlarged plot">
+      <div class="zoom-bar">
+        <p class="zoom-title" data-zoom-title></p>
+        <button class="zoom-close" type="button" data-zoom-close aria-label="Close enlarged view">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <canvas data-zoom-canvas role="img" aria-label="Enlarged plot"></canvas>
+      <p class="zoom-hint">Press <kbd>Esc</kbd> or click outside to close</p>
+    </dialog>
 
     <div class="timings">
       <p class="eyebrow">Server timings</p>
@@ -245,6 +255,63 @@
     font-size: 0.72rem;
     color: var(--accent);
     min-height: 1em;
+  }
+
+  .expand {
+    margin-left: auto;
+    display: grid; place-items: center;
+    width: 22px; height: 22px; padding: 0;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    color: var(--ink-faint);
+    cursor: pointer;
+    flex: none;
+    transition: border-color 0.18s var(--ease), color 0.18s var(--ease);
+  }
+  .expand:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* --- fullscreen plot --------------------------------------------------- */
+  .zoom {
+    width: min(96vw, 1600px);
+    height: min(92vh, 1000px);
+    padding: 0;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-lg);
+    background: var(--paper);
+    color: var(--ink);
+    overflow: hidden;
+  }
+  .zoom::backdrop { background: rgb(0 0 0 / 0.62); backdrop-filter: blur(3px); }
+  .zoom[open] { display: grid; grid-template-rows: auto 1fr auto; }
+
+  .zoom-bar {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.8rem 1rem 0.8rem 1.2rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .zoom-title {
+    font-family: var(--font-mono); font-size: 0.76rem;
+    letter-spacing: 0.04em; color: var(--ink-soft); margin: 0;
+  }
+  .zoom-close {
+    margin-left: auto;
+    display: grid; place-items: center;
+    width: 30px; height: 30px; padding: 0;
+    background: transparent; border: 1px solid var(--rule);
+    border-radius: var(--radius); color: var(--ink-soft); cursor: pointer;
+    transition: all 0.18s var(--ease);
+  }
+  .zoom-close:hover { border-color: var(--accent); color: var(--accent); }
+  .zoom canvas { width: 100%; height: 100%; border-radius: 0; }
+  .zoom-hint {
+    padding: 0.55rem 1.2rem 0.75rem;
+    font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-faint); margin: 0;
+  }
+  kbd {
+    font-family: var(--font-mono); font-size: 0.9em;
+    border: 1px solid var(--rule-strong); border-bottom-width: 2px;
+    border-radius: 3px; padding: 0.05em 0.3em;
   }
 
   .cosine {
