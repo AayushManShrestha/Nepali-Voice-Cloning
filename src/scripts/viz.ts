@@ -358,10 +358,36 @@ export function drawWaveform(
  * heatmap; with it off the colour alone carries the structure, which reads better
  * when comparing two embeddings side by side.
  */
+export interface EmbeddingGeometry {
+  box: Box;
+  side: number;
+  cellW: number;
+  cellH: number;
+}
+
+/** Geometry of the last embedding drawn on a canvas, for hit-testing the pointer. */
+const embeddingGeometry = new WeakMap<HTMLCanvasElement, EmbeddingGeometry>();
+
+export function embeddingCellAt(
+  canvas: HTMLCanvasElement,
+  clientX: number,
+  clientY: number,
+): { index: number; row: number; col: number } | null {
+  const g = embeddingGeometry.get(canvas);
+  if (!g) return null;
+  const rect = canvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  if (x < g.box.x || x > g.box.x + g.box.w || y < g.box.y || y > g.box.y + g.box.h) return null;
+  const col = Math.min(g.side - 1, Math.floor((x - g.box.x) / g.cellW));
+  const row = Math.min(g.side - 1, Math.floor((y - g.box.y) / g.cellH));
+  return { index: row * g.side + col, row, col };
+}
+
 export function drawEmbedding(
   canvas: HTMLCanvasElement,
   embedding: number[],
-  opts: { showValues?: boolean } = {},
+  opts: { showValues?: boolean; highlight?: number | null } = {},
 ): void {
   const side = Math.round(Math.sqrt(embedding.length));
   const { ctx, w, h } = fit(canvas);
@@ -378,6 +404,8 @@ export function drawEmbedding(
   const cellW = box.w / side;
   const cellH = box.h / side;
   const peak = Math.max(...embedding.map(Math.abs)) || 1;
+
+  embeddingGeometry.set(canvas, { box, side, cellW, cellH });
 
   ctx.font = monoFont(Math.max(6, Math.min(9, cellW * 0.22, cellH * 0.5)));
   ctx.textAlign = 'center';
@@ -402,6 +430,12 @@ export function drawEmbedding(
       const [r, g, b] = ramp(MAGMA, Math.abs(value) / peak);
       ctx.fillStyle = `rgb(${r} ${g} ${b})`;
       ctx.fillRect(x, y, Math.ceil(cellW), Math.ceil(cellH));
+    }
+
+    if (opts.highlight === i) {
+      ctx.strokeStyle = cssVar('--accent') || '#c0392b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, cellW - 2, cellH - 2);
     }
   }
 }

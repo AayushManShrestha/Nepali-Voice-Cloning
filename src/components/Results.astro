@@ -43,7 +43,35 @@
                   aria-label="Speaker embedding re-extracted from the cloned audio"></canvas>
         </figure>
       </div>
-      <p class="metric" data-embed-similarity></p>
+      <p class="hoverhint">
+        Hover either grid to read a single dimension &mdash; the same cell highlights in
+        both, so you can compare them value by value.
+        <span class="readout" data-embed-readout></span>
+      </p>
+
+      <div class="cosine" data-cosine hidden>
+        <p class="cos-label">Cosine similarity</p>
+        <div class="cos-formula">
+          <span class="frac">
+            <span class="num">a &middot; b</span>
+            <span class="den">&Vert;a&Vert; &Vert;b&Vert;</span>
+          </span>
+          <span class="eq">=</span>
+          <span class="frac">
+            <span class="num" data-cos-dot></span>
+            <span class="den"><span data-cos-na></span> &times; <span data-cos-nb></span></span>
+          </span>
+          <span class="eq">=</span>
+          <b data-cos-value></b>
+        </div>
+        <p class="cos-note">
+          The angle between the two 256-d vectors. Both norms come out at 1.000 because
+          the GE2E encoder L2-normalises its output &mdash; every voice lands on the unit
+          sphere &mdash; so the cosine here reduces to the plain dot product. 1.000 would
+          mean the encoder places the cloned audio at exactly the same point as the
+          original, i.e. it considers them the same speaker.
+        </p>
+      </div>
     </section>
 
     <!-- ============================================== stage 02: synthesizer -->
@@ -206,13 +234,44 @@
   .pair + .full { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
   .full .note { color: var(--ink-soft); font-size: var(--step--1); margin-bottom: 0.9rem; max-width: 70ch; }
 
-  .metric {
-    margin-top: 0.8rem;
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
+  .hoverhint {
+    margin-top: 0.9rem;
+    font-size: var(--step--1);
     color: var(--ink-soft);
+    display: flex; align-items: baseline; gap: 0.8rem; flex-wrap: wrap;
   }
-  .metric b { color: var(--accent); font-weight: 500; }
+  .readout {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--accent);
+    min-height: 1em;
+  }
+
+  .cosine {
+    margin-top: 1.2rem;
+    padding: 1rem 1.2rem;
+    background: var(--paper-sunk);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+  }
+  .cos-label {
+    font-family: var(--font-mono); font-size: 0.66rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .cos-formula {
+    display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+    margin-top: 0.7rem;
+    font-family: var(--font-mono); font-size: 0.82rem;
+  }
+  .frac { display: inline-grid; justify-items: center; }
+  .frac .num { padding: 0 0.5rem 0.15rem; }
+  .frac .den { padding: 0.15rem 0.5rem 0; border-top: 1px solid var(--ink-faint); }
+  .eq { color: var(--ink-faint); }
+  .cos-formula b { font-size: 1.15rem; color: var(--accent); font-weight: 500; }
+  .cos-note {
+    margin-top: 0.8rem; font-size: var(--step--1);
+    color: var(--ink-soft); max-width: 66ch;
+  }
 
   .transport { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.7rem; }
   .transport button {

@@ -10,6 +10,7 @@ import type { JobStatus, SynthesisResult } from './api';
 import {
   RAMPS,
   base64ToBytes,
+  embeddingCellAt,
   computePeaks,
   decodeAudio,
   drawEmbedding,
@@ -566,17 +567,62 @@ async function mountPlayer(
   };
 }
 
-/** Cosine similarity between the reference and re-extracted embeddings. */
-function cosine(a: number[], b: number[]): number {
+/**
+ * Cosine similarity between the reference and re-extracted embeddings, returned with
+ * its intermediate terms so the page can show the working rather than just a number.
+ */
+function cosine(a: number[], b: number[]): {
+  value: number;
+  dot: number;
+  normA: number;
+  normB: number;
+} {
   let dot = 0;
-  let na = 0;
-  let nb = 0;
+  let sa = 0;
+  let sb = 0;
   for (let i = 0; i < a.length; i += 1) {
     dot += a[i] * b[i];
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
+    sa += a[i] * a[i];
+    sb += b[i] * b[i];
   }
-  return dot / (Math.sqrt(na) * Math.sqrt(nb) || 1);
+  const normA = Math.sqrt(sa);
+  const normB = Math.sqrt(sb);
+  return { value: dot / (normA * normB || 1), dot, normA, normB };
+}
+
+/** Hovered embedding dimension, mirrored across both grids. */
+let hoveredCell: number | null = null;
+
+function wireEmbeddingHover(): void {
+  const readout = $<HTMLElement>('[data-embed-readout]');
+  for (const which of ['original', 'cloned'] as const) {
+    const canvas = $<HTMLCanvasElement>(`[data-plot="embedding-${which}"]`);
+    if (!canvas) continue;
+    canvas.style.cursor = 'crosshair';
+    canvas.addEventListener('mousemove', (event) => {
+      const hit = embeddingCellAt(canvas, event.clientX, event.clientY);
+      const next = hit ? hit.index : null;
+      if (next === hoveredCell) return;
+      hoveredCell = next;
+      if (readout && latest) {
+        if (hit) {
+          const o = latest.embedding[hit.index];
+          const c = (latest.cloned_embedding ?? latest.embedding)[hit.index];
+          readout.textContent =
+            `dim ${hit.index} (row ${hit.row}, col ${hit.col}) · ` +
+            `original ${o.toFixed(3)} · cloned ${c.toFixed(3)} · Δ ${(c - o).toFixed(3)}`;
+        } else {
+          readout.textContent = '';
+        }
+      }
+      if (latest) redrawPlots(latest);
+    });
+    canvas.addEventListener('mouseleave', () => {
+      hoveredCell = null;
+      if (readout) readout.textContent = '';
+      if (latest) redrawPlots(latest);
+    });
+  }
 }
 
 function redrawPlots(result: SynthesisResult): void {
@@ -605,22 +651,27 @@ function redrawPlots(result: SynthesisResult): void {
     });
   }
 
-  if (embedOriginal) drawEmbedding(embedOriginal, result.embedding, { showValues: showEmbedValues });
+  const embedOpts = { showValues: showEmbedValues, highlight: hoveredCell };
+  if (embedOriginal) drawEmbedding(embedOriginal, result.embedding, embedOpts);
   if (embedCloned) {
-    drawEmbedding(embedCloned, result.cloned_embedding ?? result.embedding, {
-      showValues: showEmbedValues,
-    });
+    drawEmbedding(embedCloned, result.cloned_embedding ?? result.embedding, embedOpts);
   }
 
-  const similarity = $<HTMLElement>('[data-embed-similarity]');
-  if (similarity) {
+  const cosBox = $<HTMLElement>('[data-cosine]');
+  if (cosBox) {
     if (result.cloned_embedding) {
-      const score = cosine(result.embedding, result.cloned_embedding);
-      similarity.innerHTML =
-        `cosine similarity between the two embeddings: <b>${score.toFixed(3)}</b> ` +
-        `&mdash; 1.000 would mean the encoder considers them the same speaker`;
+      const { value, dot, normA, normB } = cosine(result.embedding, result.cloned_embedding);
+      const set = (sel: string, text: string) => {
+        const node = $<HTMLElement>(sel);
+        if (node) node.textContent = text;
+      };
+      set('[data-cos-dot]', dot.toFixed(3));
+      set('[data-cos-na]', normA.toFixed(3));
+      set('[data-cos-nb]', normB.toFixed(3));
+      set('[data-cos-value]', value.toFixed(3));
+      cosBox.hidden = false;
     } else {
-      similarity.textContent = '';
+      cosBox.hidden = true;
     }
   }
 
@@ -662,6 +713,8 @@ if (form) new Studio(form);
 document.addEventListener('themechange', () => {
   if (latest) redrawPlots(latest);
 });
+
+wireEmbeddingHover();
 
 const embedToggle = $<HTMLInputElement>('[data-embed-values]');
 embedToggle?.addEventListener('change', () => {
