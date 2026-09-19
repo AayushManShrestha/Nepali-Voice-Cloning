@@ -61,8 +61,11 @@ interactive island, so it ships **no JavaScript** outside the studio — about 7
 including the Nepali keyboard library.
 
 The plots are drawn in the browser on `<canvas>` from raw arrays. The backend used to
-render them as matplotlib PNGs: 592 kB per response, 86% of it pictures, and the bulk of
-the request latency.
+render them as matplotlib PNGs — 592 kB per response, 86% of it pictures. Moving that to
+the client cut the response to 68–206 kB and made the visuals interactive; it did *not*
+meaningfully change latency, because the autoregressive vocoder accounts for 94–98% of
+synthesis time. See the [server README](../server/README.md#performance) for the
+measurements.
 
 ```
 src/

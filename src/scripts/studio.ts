@@ -5,7 +5,7 @@
  * input, the synthesis call, and the canvas plots.
  */
 import nepalify from 'nepalify';
-import { checkHealth, estimateSeconds, synthesize, STAGES } from './api';
+import { checkHealth, estimateWithQueue, synthesize, STAGES } from './api';
 import type { JobStatus, SynthesisResult } from './api';
 import {
   alignmentStops,
@@ -333,9 +333,11 @@ class Studio {
         Array.from(new Uint8Array(bytes), (b) => String.fromCharCode(b)).join(''),
       );
 
-      const estimate = estimateSeconds(text.length);
-      const startedAt = Date.now();
-      this.tickEta(estimate, startedAt);
+      this.textLength = text.length;
+      this.queueAhead = 0;
+      this.queuedForMs = 0;
+      this.queuedAt = null;
+      this.tickEta(Date.now());
 
       const result = await synthesize(text, base64, (status) => this.onProgress(status));
       await this.render(result, bytes, label);
@@ -349,15 +351,39 @@ class Studio {
   }
 
   private etaTimer: number | null = null;
+  private queueAhead = 0;
+  private textLength = 0;
+  private queuedForMs = 0;
+  private queuedAt: number | null = null;
 
-  private tickEta(estimate: number, startedAt: number): void {
+  /**
+   * Show elapsed time against the expected duration.
+   *
+   * Two things this deliberately does NOT do: promise a countdown (the estimate is a
+   * fit, not a guarantee), and keep quoting a stale figure once it has been exceeded.
+   * Being overtaken by your own estimate and saying nothing reads as a hang.
+   */
+  private tickEta(startedAt: number): void {
     const eta = $<HTMLElement>('[data-progress-eta]');
     if (!eta) return;
     if (this.etaTimer) window.clearInterval(this.etaTimer);
-    this.etaTimer = window.setInterval(() => {
+
+    const render = () => {
       const elapsed = Math.round((Date.now() - startedAt) / 1000);
-      eta.textContent = `${elapsed}s elapsed · ~${estimate}s typical`;
-    }, 500);
+      // Recomputed every tick, so the figure tracks the queue draining ahead of you.
+      // Time already spent queued stays in the budget once we start running -- elapsed
+      // counts from submit, so dropping it would make every queued job look overdue.
+      const budget =
+        Math.round(this.queuedForMs / 1000) +
+        estimateWithQueue(this.textLength, this.queueAhead);
+      if (elapsed > budget * 1.25) {
+        eta.textContent = `${elapsed}s elapsed · longer than usual`;
+      } else {
+        eta.textContent = `${elapsed}s elapsed · ~${budget}s expected`;
+      }
+    };
+    render();
+    this.etaTimer = window.setInterval(render, 500);
   }
 
   private onProgress(status: JobStatus): void {
@@ -365,14 +391,26 @@ class Studio {
     const label = $<HTMLElement>('[data-progress-label]');
 
     if (status.status === 'queued') {
+      // The server's queue_position counts only *waiting* jobs, not the one currently
+      // running. But being queued at all means something is ahead of us -- otherwise we
+      // would be running. So position N means N jobs to get through, not N-1.
+      this.queueAhead = Math.max(1, status.queue_position ?? 1);
       if (label) {
-        label.textContent = status.queue_position
-          ? `Queued — position ${status.queue_position}`
-          : 'Queued';
+        label.textContent =
+          this.queueAhead === 1
+            ? 'Queued — one job ahead of you'
+            : `Queued — ${this.queueAhead} jobs ahead of you`;
       }
       if (fill) fill.style.width = '4%';
+      this.queuedAt ??= Date.now();
       return;
     }
+    // First non-queued update: bank however long we actually waited.
+    if (this.queuedAt !== null) {
+      this.queuedForMs = Date.now() - this.queuedAt;
+      this.queuedAt = null;
+    }
+    this.queueAhead = 0;
 
     if (fill) fill.style.width = `${Math.max(4, status.progress * 100).toFixed(1)}%`;
     if (label && status.stage) {

@@ -168,8 +168,37 @@ async function pollToCompletion(id: string): Promise<SynthesisResult> {
   throw new Error('Timed out waiting for synthesis.');
 }
 
-/** Measured on the live Space: ~17s fixed + ~2.3s per second of generated audio. */
+/**
+ * Expected synthesis time, fitted to measurements on the live Space (cpu-basic, 2 vCPU).
+ *
+ *   server_seconds = 11.9 + 2.94 * audio_seconds
+ *   audio_seconds  = 0.0628 * characters
+ *
+ * Fit against three points (7/52/177 chars -> 13.4/22.6/45.2s) lands within ~1s each.
+ * The dominant term is the autoregressive vocoder, which is why this scales with the
+ * length of the *output* rather than being a flat constant.
+ */
 export function estimateSeconds(characterCount: number): number {
-  const estimatedAudioSeconds = Math.max(0.7, characterCount * 0.065);
-  return Math.round(6 + estimatedAudioSeconds * 2.3);
+  const fitted = 11.9 + 0.1845 * Math.max(1, characterCount);
+  // Quote at least 30s. The fit is a central estimate, but the Space runs on two
+  // *shared* vCPUs, so a noisy neighbour can double it. Under-promising costs nothing;
+  // blowing past a confident estimate reads as a hang.
+  return Math.round(Math.max(MIN_ESTIMATE_SECONDS, fitted));
+}
+
+/** Floor for any quoted estimate. See estimateSeconds(). */
+export const MIN_ESTIMATE_SECONDS = 30;
+
+/**
+ * Expected wait including the queue.
+ *
+ * Only one synthesis runs at a time, so being Nth in line means waiting for N jobs.
+ * The text length of the jobs ahead is unknown, so each is costed at your own estimate
+ * — measured production runs put three concurrent jobs at roughly 20s / 37s / 53s,
+ * i.e. very close to linear in queue position.
+ *
+ * `jobsAhead` is 0 when you are next to run.
+ */
+export function estimateWithQueue(characterCount: number, jobsAhead: number): number {
+  return estimateSeconds(characterCount) * (Math.max(0, jobsAhead) + 1);
 }
