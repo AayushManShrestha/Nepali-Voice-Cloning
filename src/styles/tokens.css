@@ -37,6 +37,13 @@
   --wave:     #16150f;
   --wave-ghost: rgb(22 21 15 / 0.22);
 
+  /* Chart series, used by the evaluation page. Validated with the dataviz palette
+     checker: lightness band, chroma floor, CVD separation (worst adjacent dE 18.9
+     deutan), normal-vision floor and contrast all pass against this surface. A
+     red/green pair was tried first and failed CVD at dE 4.1. */
+  --series-quality: #c0392b;
+  --series-similarity: #0b7fa8;
+
   /* --- type --------------------------------------------------------------- */
   --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
@@ -94,6 +101,10 @@
   --wave:     #ece8de;
   --wave-ghost: rgb(236 232 222 / 0.22);
 
+  /* Dark steps are selected and re-validated against the dark surface, not flipped. */
+  --series-quality: #ed5f42;
+  --series-similarity: #3398bd;
+
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05' fill='%23ffffff'/%3E%3C/svg%3E");
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
@@ -127,6 +138,10 @@
     --viz-axis: #8a8779;
     --wave:     #ece8de;
     --wave-ghost: rgb(236 232 222 / 0.22);
+
+    /* Dark steps are selected and re-validated against the dark surface, not flipped. */
+    --series-quality: #ed5f42;
+    --series-similarity: #3398bd;
 
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05' fill='%23ffffff'/%3E%3C/svg%3E");
 

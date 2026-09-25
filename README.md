@@ -7,8 +7,14 @@ trained on that speaker.
 **Live:** [nepali-voice-cloning.vercel.app](https://nepali-voice-cloning.vercel.app)
 
 This repository is the frontend. The model server lives in
-[`../server`](https://huggingface.co/spaces/lord-reso/Nepali-Voice-Cloning); a separate
-[listening study](https://voice-cloning-mos.vercel.app) measures how close the clones get.
+[`../server`](https://huggingface.co/spaces/lord-reso/Nepali-Voice-Cloning).
+
+Two pages:
+
+| Route | What |
+|---|---|
+| `/` | The demo and write-up. One interactive island. |
+| `/mos` | The listening study: 57 raters, 50 clips, the scores and the caveats. |
 
 ---
 
@@ -69,12 +75,29 @@ measurements.
 
 ```
 src/
+  pages/        index.astro (demo) · mos.astro (listening study)
   components/   Hero, Pipeline, Studio, Results, Notes, header/footer
-  data/         speakers.json — single source of truth for the voice library
+    mos/        Scores, Rubric, SpeakerPanel — the study's own components
+  data/         speakers.json      — the voice library the studio offers
+                mos-speakers.json  — the study's 50-clip manifest
+                mos-scores.json    — aggregated ratings, no rater identities
   scripts/      studio.ts (island) · viz.ts (canvas) · api.ts (backend client)
+                theme.ts — the toggle, shared by both pages
   styles/       tokens.css — every colour, both themes
 api/warm.js     Vercel Function: daily cron ping, see below
 ```
+
+### The listening study
+
+`/mos` was its own repository and its own Vercel project until it was folded in here.
+The split cost two deploys and a duplicated design system —
+`Base.astro`, `global.css` and `favicon.svg` were byte-identical in both — and buried
+the one page that answers "but how good is it actually" behind a footer link on another
+origin.
+
+It ships **no JavaScript** beyond the shared theme toggle: 0.25 kB gzipped against the
+studio's 9.4 kB. The bar and distribution charts are CSS, and all 50 players are
+`preload="none"`, so none of the 7.7 MB of audio loads until someone presses play.
 
 ### The browser calls the model server directly
 

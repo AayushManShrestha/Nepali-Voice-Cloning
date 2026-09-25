@@ -1,0 +1,362 @@
+[
+  {
+    "id": 1,
+    "label": "Speaker 1",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker1.wav",
+        "type": "audio/wav",
+        "sampleRate": 22050,
+        "duration": 4.36
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_1.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 3.93
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker1.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 2.7
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker1.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 3.15
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker1.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 8.76
+      }
+    }
+  },
+  {
+    "id": 2,
+    "label": "Speaker 2",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker2.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 8.63
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_2.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 8.25
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker2.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 3.0
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker2.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 3.58
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker2.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 8.66
+      }
+    }
+  },
+  {
+    "id": 3,
+    "label": "Speaker 3",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker3.wav",
+        "type": "audio/wav",
+        "sampleRate": 22050,
+        "duration": 3.55
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_3.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 2.88
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker3.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 2.76
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker3.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 3.42
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker3.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 8.61
+      }
+    }
+  },
+  {
+    "id": 4,
+    "label": "Speaker 4",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker4.wav",
+        "type": "audio/wav",
+        "sampleRate": 22050,
+        "duration": 7.64
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_4.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 5.22
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker4.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 2.9
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker4.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 3.42
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker4.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 8.55
+      }
+    }
+  },
+  {
+    "id": 5,
+    "label": "Speaker 5",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker5.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 4.55
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_5.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 4.86
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker5.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 2.7
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker5.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 3.18
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker5.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 7.38
+      }
+    }
+  },
+  {
+    "id": 6,
+    "label": "Speaker 6",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker6.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 4.87
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_6.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 4.92
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker6.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 2.85
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker6.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 3.3
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker6.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 8.52
+      }
+    }
+  },
+  {
+    "id": 7,
+    "label": "Speaker 7",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker7.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 5.36
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_7.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 4.53
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker7.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 2.6
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker7.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 2.95
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker7.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 7.53
+      }
+    }
+  },
+  {
+    "id": 8,
+    "label": "Speaker 8",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker8.wav",
+        "type": "audio/wav",
+        "sampleRate": 22050,
+        "duration": 9.75
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_8.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 7.98
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker8.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 2.73
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker8.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 3.21
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker8.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 9.03
+      }
+    }
+  },
+  {
+    "id": 9,
+    "label": "Speaker 9",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker9.wav",
+        "type": "audio/wav",
+        "sampleRate": 22050,
+        "duration": 3.96
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_9.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 4.74
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker9.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 3.3
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker9.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 3.03
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker9.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 8.73
+      }
+    }
+  },
+  {
+    "id": 10,
+    "label": "Speaker 10",
+    "clips": {
+      "original": {
+        "src": "/speakers/original_audio_speaker10.flac",
+        "type": "audio/flac",
+        "sampleRate": 48000,
+        "duration": 7.88
+      },
+      "sameInput": {
+        "src": "/speakers/same_input/speaker_10.wav",
+        "type": "audio/wav",
+        "sampleRate": 16000,
+        "duration": 6.03
+      },
+      "short": {
+        "src": "/speakers/short_cloned_audio_speaker10.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 2.75
+      },
+      "medium": {
+        "src": "/speakers/medium_cloned_audio_speaker10.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 3.25
+      },
+      "long": {
+        "src": "/speakers/long_cloned_audio_speaker10.flac",
+        "type": "audio/flac",
+        "sampleRate": 16000,
+        "duration": 6.92
+      }
+    }
+  }
+]

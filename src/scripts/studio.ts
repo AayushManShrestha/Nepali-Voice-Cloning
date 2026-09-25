@@ -5,6 +5,8 @@
  * input, the synthesis call, and the canvas plots.
  */
 import nepalify from 'nepalify';
+// Wires up the theme toggle on import; shared with the evaluation page.
+import './theme';
 import { checkHealth, estimateWithQueue, synthesize, STAGES } from './api';
 import type { JobStatus, SynthesisResult } from './api';
 import {
@@ -23,27 +25,6 @@ const $ = <T extends Element>(sel: string, root: ParentNode = document): T | nul
   root.querySelector<T>(sel);
 const $$ = <T extends Element>(sel: string, root: ParentNode = document): T[] =>
   Array.from(root.querySelectorAll<T>(sel));
-
-/* --------------------------------------------------------------------------
-   Theme
-   -------------------------------------------------------------------------- */
-function initTheme(): void {
-  const button = $<HTMLButtonElement>('[data-theme-toggle]');
-  button?.addEventListener('click', () => {
-    const root = document.documentElement;
-    const currentlyDark =
-      root.dataset.theme === 'dark' ||
-      (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
-    const next = currentlyDark ? 'light' : 'dark';
-    root.dataset.theme = next;
-    try {
-      localStorage.setItem('theme', next);
-    } catch {
-      /* storage blocked; the choice just won't persist */
-    }
-    document.dispatchEvent(new CustomEvent('themechange'));
-  });
-}
 
 /* --------------------------------------------------------------------------
    Backend status
@@ -756,7 +737,6 @@ function renderTimings(timings: Record<string, number>): void {
 /* --------------------------------------------------------------------------
    Boot
    -------------------------------------------------------------------------- */
-initTheme();
 initStatus();
 
 const form = $<HTMLFormElement>('[data-studio]');

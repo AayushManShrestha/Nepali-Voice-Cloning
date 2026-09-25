@@ -1,4 +1,16 @@
 ---
+interface Props {
+  /** The model-server indicator only means something where synthesis happens. */
+  status?: boolean;
+}
+const { status = false } = Astro.props;
+
+// Trailing slashes are normalised so `/mos` and `/mos/` both mark themselves current.
+const here = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const links = [
+  { href: '/', label: 'Studio' },
+  { href: '/mos', label: 'Evaluation' },
+];
 ---
 <header class="masthead">
   <div class="shell bar">
@@ -12,11 +24,21 @@
       <span>Nepali Voice Cloning</span>
     </a>
 
+    <nav class="nav" aria-label="Sections">
+      {links.map((link) => (
+        <a href={link.href} aria-current={here === link.href ? 'page' : undefined}>
+          {link.label}
+        </a>
+      ))}
+    </nav>
+
     <div class="tools">
-      <p class="status" data-backend-status aria-live="polite">
-        <span class="dot" data-state="probing"></span>
-        <span data-backend-label>checking model server</span>
-      </p>
+      {status && (
+        <p class="status" data-backend-status aria-live="polite">
+          <span class="dot" data-state="probing"></span>
+          <span data-backend-label>checking model server</span>
+        </p>
+      )}
 
       <button class="toggle" type="button" data-theme-toggle aria-label="Switch colour theme">
         <svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -59,6 +81,20 @@
   }
   .wordmark svg { color: var(--accent); flex: none; }
   .wordmark:hover { color: var(--ink); }
+
+  .nav { display: flex; align-items: center; gap: 0.2rem; margin-right: auto; }
+  .nav a {
+    padding: 0.3rem 0.7rem;
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    color: var(--ink-faint);
+    transition: color 0.18s var(--ease), background 0.18s var(--ease);
+  }
+  .nav a:hover { color: var(--ink); background: var(--paper-sunk); }
+  .nav a[aria-current='page'] { color: var(--accent); background: var(--accent-wash); }
 
   .tools { display: flex; align-items: center; gap: 0.9rem; }
 
@@ -109,5 +145,10 @@
 
   @media (max-width: 34rem) {
     .status { display: none; }
+  }
+  /* Below this the wordmark, the nav and the toggle stop fitting on one line.
+     The mark alone still identifies the site and still links home. */
+  @media (max-width: 26rem) {
+    .wordmark span { display: none; }
   }
 </style>

@@ -1,0 +1,154 @@
+---
+/**
+ * The listening study. Previously a separate Astro site on its own Vercel project
+ * (voice-cloning-mos.vercel.app); folded in here because it is the evidence for the
+ * claim the studio makes, and split across two origins almost nobody saw it.
+ *
+ * It ships no JavaScript beyond the shared theme toggle -- 50 audio elements with
+ * `preload="none"`, and charts drawn in CSS.
+ */
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import Rubric from '../components/mos/Rubric.astro';
+import Scores from '../components/mos/Scores.astro';
+import SpeakerPanel from '../components/mos/SpeakerPanel.astro';
+import speakers from '../data/mos-speakers.json';
+---
+<Base
+  title="Listening study — Nepali Voice Cloning"
+  description="Mean opinion score evaluation of a Nepali neural voice cloning system: 57 raters, 10 speakers, 570 ratings per axis, scored for speech quality and speaker similarity."
+>
+  <SiteHeader />
+  <main id="main">
+    <section class="intro">
+      <div class="shell">
+        <p class="eyebrow">MOS &middot; 10 speakers &middot; 50 clips</p>
+        <h1>How close does a cloned Nepali voice actually get?</h1>
+        <p class="lede">
+          Objective loss numbers say very little about synthesised speech. The only
+          measure that counts is whether a listener believes it. This page holds the
+          stimuli from a mean-opinion-score study of the cloning system, the scores
+          raters gave, and the scale they used to judge them.
+        </p>
+        <p class="jump"><a href="/#studio">Try the model yourself &rarr;</a></p>
+      </div>
+    </section>
+
+    <Scores />
+
+    <section class="method">
+      <div class="shell">
+        <p class="eyebrow">Method</p>
+        <h2>Two axes, five points.</h2>
+        <p class="lede">
+          Every clip was rated twice: once for how natural the speech sounds on its own,
+          and once for how much it sounds like the target speaker. A system can score
+          well on one and badly on the other &mdash; clean but generic, or characterful
+          but garbled.
+        </p>
+        <Rubric />
+
+        <div class="caveats">
+          <h3>Known limitations of this study</h3>
+          <ul>
+            <li>
+              <b>Bandwidth confound.</b> Six of the ten original recordings are 22.05&nbsp;kHz
+              or 48&nbsp;kHz while every clone is 16&nbsp;kHz. A listener can pick the
+              synthetic sample from bandwidth alone, before judging the voice. Affected
+              speakers are flagged below. The audio is left untouched because the scores
+              were collected against these exact files.
+            </li>
+            <li>
+              <b>Fixed presentation order.</b> Speakers always appear in the same sequence,
+              original first, then short, medium, long. No randomisation or
+              counterbalancing, so order effects are not controlled.
+            </li>
+            <li>
+              <b>Unblinded.</b> Clips are labelled as original or cloned, which will bias a
+              similarity judgement.
+            </li>
+            <li>
+              <b>Untraceable stimuli.</b> Only two of the ten speaker slots can still be
+              matched to a source recording, and three commits in September 2025 silently
+              reassigned which recording sits behind which number.
+            </li>
+            <li>
+              <b>No attention checks</b> and no per-rater metadata, so inattentive raters
+              cannot be identified after the fact.
+            </li>
+          </ul>
+          <p class="fix">
+            None of this invalidates the samples &mdash; you can listen and judge for
+            yourself. It does mean the aggregate numbers should be read as indicative
+            rather than publishable.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="samples">
+      <div class="shell">
+        <p class="eyebrow">Samples</p>
+        <h2>Listen.</h2>
+        <p class="lede">
+          Audio loads only when you press play &mdash; there are 50 clips here.
+        </p>
+      </div>
+      <div class="shell">
+        <div class="panels">
+          {speakers.map((s) => <SpeakerPanel speaker={s} />)}
+        </div>
+      </div>
+    </section>
+  </main>
+  <SiteFooter />
+</Base>
+
+<script>
+  import '../scripts/theme.ts';
+</script>
+
+<style>
+  .intro { padding-block: clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 3vw, 2.5rem); }
+  h1 { font-size: var(--step-4); max-width: 18ch; margin-block: 0.5em 0.6em; }
+  h2 { font-size: var(--step-3); margin-block: 0.4em 0.6em; }
+  .lede { color: var(--ink-soft); max-width: 60ch; }
+
+  .jump { margin-top: 1.8rem; }
+  .jump a {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent);
+    padding-bottom: 2px;
+    color: var(--accent);
+  }
+
+  .method { padding-block: clamp(2.5rem, 5vw, 4rem); background: var(--paper-sunk); }
+
+  .caveats { margin-top: clamp(2rem, 4vw, 3rem); max-width: 68ch; }
+  .caveats h3 { font-size: var(--step-1); margin-bottom: 0.8rem; }
+  .caveats ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.7rem; }
+  .caveats li { color: var(--ink-soft); font-size: var(--step--1); line-height: 1.65; }
+  .caveats b { color: var(--ink); font-weight: 500; }
+  .fix { margin-top: 1.1rem; font-size: var(--step--1); color: var(--ink-faint); font-style: italic; }
+
+  .samples { padding-block: clamp(2.5rem, 5vw, 4rem); }
+
+  .panels {
+    margin-top: 1.8rem;
+    display: grid; gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+</style>
+
+<style is:global>
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+  main { flex: 1; }
+</style>

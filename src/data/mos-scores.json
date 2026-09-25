@@ -1,0 +1,193 @@
+{
+  "$comment": "Aggregated from MOS.csv (Google Forms export). Rater email addresses are deliberately excluded -- only aggregates are published.",
+  "collectedOn": "2024-02-28 to 2024-03-01",
+  "raters": 57,
+  "speakers": 10,
+  "ratingsPerAxis": 570,
+  "scale": {
+    "min": 1,
+    "max": 5
+  },
+  "overall": {
+    "quality": {
+      "mean": 3.45,
+      "sd": 1.0,
+      "ci95": 0.08,
+      "n": 570
+    },
+    "similarity": {
+      "mean": 3.28,
+      "sd": 1.15,
+      "ci95": 0.09,
+      "n": 570
+    }
+  },
+  "distribution": {
+    "quality": [
+      21,
+      67,
+      197,
+      202,
+      83
+    ],
+    "similarity": [
+      36,
+      120,
+      150,
+      174,
+      90
+    ]
+  },
+  "bySpeaker": [
+    {
+      "id": 1,
+      "quality": {
+        "mean": 3.19,
+        "sd": 1.01,
+        "ci95": 0.26,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 2.91,
+        "sd": 1.04,
+        "ci95": 0.27,
+        "n": 57
+      }
+    },
+    {
+      "id": 2,
+      "quality": {
+        "mean": 3.67,
+        "sd": 0.81,
+        "ci95": 0.21,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 3.35,
+        "sd": 1.04,
+        "ci95": 0.27,
+        "n": 57
+      }
+    },
+    {
+      "id": 3,
+      "quality": {
+        "mean": 3.6,
+        "sd": 0.8,
+        "ci95": 0.21,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 3.25,
+        "sd": 1.21,
+        "ci95": 0.32,
+        "n": 57
+      }
+    },
+    {
+      "id": 4,
+      "quality": {
+        "mean": 3.25,
+        "sd": 1.07,
+        "ci95": 0.28,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 3.4,
+        "sd": 1.05,
+        "ci95": 0.27,
+        "n": 57
+      }
+    },
+    {
+      "id": 5,
+      "quality": {
+        "mean": 3.42,
+        "sd": 0.94,
+        "ci95": 0.25,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 3.47,
+        "sd": 1.12,
+        "ci95": 0.29,
+        "n": 57
+      }
+    },
+    {
+      "id": 6,
+      "quality": {
+        "mean": 3.26,
+        "sd": 1.09,
+        "ci95": 0.28,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 2.89,
+        "sd": 1.21,
+        "ci95": 0.31,
+        "n": 57
+      }
+    },
+    {
+      "id": 7,
+      "quality": {
+        "mean": 3.49,
+        "sd": 0.93,
+        "ci95": 0.24,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 3.56,
+        "sd": 1.09,
+        "ci95": 0.28,
+        "n": 57
+      }
+    },
+    {
+      "id": 8,
+      "quality": {
+        "mean": 3.18,
+        "sd": 1.23,
+        "ci95": 0.32,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 2.89,
+        "sd": 1.22,
+        "ci95": 0.32,
+        "n": 57
+      }
+    },
+    {
+      "id": 9,
+      "quality": {
+        "mean": 3.72,
+        "sd": 0.94,
+        "ci95": 0.24,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 3.46,
+        "sd": 1.07,
+        "ci95": 0.28,
+        "n": 57
+      }
+    },
+    {
+      "id": 10,
+      "quality": {
+        "mean": 3.77,
+        "sd": 0.93,
+        "ci95": 0.24,
+        "n": 57
+      },
+      "similarity": {
+        "mean": 3.65,
+        "sd": 1.19,
+        "ci95": 0.31,
+        "n": 57
+      }
+    }
+  ]
+}

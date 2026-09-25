@@ -1,0 +1,270 @@
+---
+import scores from '../../data/mos-scores.json';
+
+const hasData = scores.raters !== null && scores.overall?.quality?.mean != null;
+const MAX = scores.scale?.max ?? 5;
+
+const metrics = hasData
+  ? [
+      { key: 'quality', label: 'Speech quality', q: scores.overall.quality,
+        gloss: 'Does it sound like natural speech?' },
+      { key: 'similarity', label: 'Speaker similarity', q: scores.overall.similarity,
+        gloss: 'Does it sound like the target person?' },
+    ]
+  : [];
+
+const distMax = hasData
+  ? Math.max(...scores.distribution.quality, ...scores.distribution.similarity)
+  : 1;
+---
+{hasData ? (
+  <section class="scores" id="results">
+    <div class="shell">
+      <p class="eyebrow">Results</p>
+      <h2>What the raters said.</h2>
+      <p class="n">
+        {scores.raters} raters &middot; {scores.speakers} speakers &middot;
+        {scores.ratingsPerAxis} ratings per axis &middot; {scores.scale.min}&ndash;{scores.scale.max} scale
+        &middot; collected {scores.collectedOn}
+      </p>
+
+      <!-- headline: a number, not a chart -->
+      <div class="headline">
+        {metrics.map((m) => (
+          <div class="metric">
+            <p class="mlabel"><span class={`swatch ${m.key}`} aria-hidden="true"></span>{m.label}</p>
+            <p class="mvalue">
+              {m.q.mean.toFixed(2)}<span class="of">/ {MAX}</span>
+            </p>
+            <p class="mci">±{m.q.ci95.toFixed(2)} at 95% confidence &middot; SD {m.q.sd.toFixed(2)}</p>
+            <p class="mgloss">{m.gloss}</p>
+          </div>
+        ))}
+      </div>
+
+      <!-- per speaker -->
+      <figure class="chart">
+        <figcaption>
+          <h3>By speaker</h3>
+          <p>Both axes on the same 1&ndash;5 scale, bars measured from zero.</p>
+        </figcaption>
+
+        <ul class="legend">
+          <li><span class="swatch quality" aria-hidden="true"></span>Speech quality</li>
+          <li><span class="swatch similarity" aria-hidden="true"></span>Speaker similarity</li>
+        </ul>
+
+        <div class="bars">
+          {scores.bySpeaker.map((s) => (
+            <div class="row">
+              <p class="rlabel">Speaker {s.id}</p>
+              <div class="pair">
+                {(['quality', 'similarity'] as const).map((k) => (
+                  <div class="track">
+                    <div class={`fill ${k}`} style={`width:${(s[k].mean / MAX) * 100}%`}></div>
+                    <span class="val">{s[k].mean.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div class="scale-ticks" aria-hidden="true">
+          {[0, 1, 2, 3, 4, 5].map((t) => <span>{t}</span>)}
+        </div>
+      </figure>
+
+      <!-- distribution -->
+      <figure class="chart">
+        <figcaption>
+          <h3>How the ratings fell</h3>
+          <p>
+            Every individual rating, bucketed. Quality clusters on 3&ndash;4; similarity
+            is flatter and carries a heavier tail at 1&ndash;2 &mdash; raters were harsher
+            about <em>who</em> it sounded like than about whether it sounded human.
+          </p>
+        </figcaption>
+
+        <ul class="legend">
+          <li><span class="swatch quality" aria-hidden="true"></span>Speech quality</li>
+          <li><span class="swatch similarity" aria-hidden="true"></span>Speaker similarity</li>
+        </ul>
+
+        <div class="dist">
+          {[1, 2, 3, 4, 5].map((bucket, i) => (
+            <div class="bucket">
+              <div class="cols">
+                {(['quality', 'similarity'] as const).map((k) => (
+                  <div class="col">
+                    <span class="count">{scores.distribution[k][i]}</span>
+                    <div class={`stalk ${k}`}
+                         style={`height:${(scores.distribution[k][i] / distMax) * 100}%`}></div>
+                  </div>
+                ))}
+              </div>
+              <p class="blabel">{bucket}</p>
+            </div>
+          ))}
+        </div>
+        <p class="axis-note">rating &rarr;</p>
+      </figure>
+
+      <!-- table view, so nothing is encoded in colour alone -->
+      <details class="table-view">
+        <summary>View as a table</summary>
+        <table>
+          <caption>Mean opinion scores by speaker, 1&ndash;5 scale, n&nbsp;=&nbsp;{scores.raters} raters.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Speaker</th>
+              <th scope="col" class="r">Quality</th>
+              <th scope="col" class="r">SD</th>
+              <th scope="col" class="r">Similarity</th>
+              <th scope="col" class="r">SD</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scores.bySpeaker.map((s) => (
+              <tr>
+                <th scope="row">Speaker {s.id}</th>
+                <td class="r">{s.quality.mean.toFixed(2)}</td>
+                <td class="r dim">{s.quality.sd.toFixed(2)}</td>
+                <td class="r">{s.similarity.mean.toFixed(2)}</td>
+                <td class="r dim">{s.similarity.sd.toFixed(2)}</td>
+              </tr>
+            ))}
+            <tr class="total">
+              <th scope="row">All speakers</th>
+              <td class="r">{scores.overall.quality.mean.toFixed(2)}</td>
+              <td class="r dim">{scores.overall.quality.sd.toFixed(2)}</td>
+              <td class="r">{scores.overall.similarity.mean.toFixed(2)}</td>
+              <td class="r dim">{scores.overall.similarity.sd.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+
+      <p class="provenance">
+        Collected with a Google Form: raters listened to each speaker&rsquo;s original
+        recording, then rated the cloned audio on both axes. Responses were anonymous;
+        only aggregates are published here.
+      </p>
+    </div>
+  </section>
+) : (
+  <section class="pending" id="results">
+    <div class="shell">
+      <p class="eyebrow">Results</p>
+      <h2>Scores are being collated.</h2>
+      <p class="note">
+        This study&rsquo;s ratings were collected outside this repository. Rather than
+        show a placeholder, the numbers stay out until the real ones are in.
+      </p>
+    </div>
+  </section>
+)}
+
+<style>
+  .scores, .pending { padding-block: clamp(2.5rem, 5vw, 4rem); }
+  h2 { font-size: var(--step-3); margin-block: 0.4em 0.5em; }
+  .n { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-faint); line-height: 1.7; }
+  .note { color: var(--ink-soft); max-width: 56ch; font-size: var(--step--1); }
+
+  .swatch {
+    display: inline-block; width: 9px; height: 9px; border-radius: 2px;
+    margin-right: 0.45rem; flex: none;
+  }
+  .swatch.quality { background: var(--series-quality); }
+  .swatch.similarity { background: var(--series-similarity); }
+
+  /* --- headline ---------------------------------------------------------- */
+  .headline {
+    display: grid; gap: clamp(1.4rem, 3vw, 2.5rem);
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    margin-top: 2rem;
+  }
+  .metric { border-top: 2px solid var(--rule-strong); padding-top: 1rem; }
+  .mlabel {
+    display: flex; align-items: center;
+    font-family: var(--font-mono); font-size: 0.7rem;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .mvalue {
+    font-family: var(--font-display); font-size: var(--step-4);
+    line-height: 1; margin-top: 0.4rem;
+  }
+  .of { font-family: var(--font-sans); font-size: var(--step-0); color: var(--ink-faint); margin-left: 0.35rem; }
+  .mci { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-faint); margin-top: 0.5rem; }
+  .mgloss { font-size: var(--step--1); color: var(--ink-soft); margin-top: 0.4rem; }
+
+  /* --- charts ------------------------------------------------------------ */
+  .chart { margin: clamp(2.2rem, 4vw, 3.2rem) 0 0; }
+  figcaption h3 { font-size: var(--step-1); }
+  figcaption p { color: var(--ink-soft); font-size: var(--step--1); margin-top: 0.3rem; max-width: 62ch; }
+  figcaption em { font-style: italic; color: var(--ink); }
+
+  .legend {
+    list-style: none; margin: 0.9rem 0 1.1rem; padding: 0;
+    display: flex; flex-wrap: wrap; gap: 1.1rem;
+    font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-soft);
+  }
+  .legend li { display: flex; align-items: center; }
+
+  .bars { display: grid; gap: 0.55rem; }
+  .row { display: grid; grid-template-columns: 5.5rem 1fr; gap: 0.8rem; align-items: center; }
+  .rlabel { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-soft); }
+  .pair { display: grid; gap: 2px; }
+  .track { position: relative; display: flex; align-items: center; gap: 0.5rem; }
+  .fill {
+    height: 9px; border-radius: 0 3px 3px 0; min-width: 2px;
+    transition: width 0.5s var(--ease);
+  }
+  .fill.quality { background: var(--series-quality); }
+  .fill.similarity { background: var(--series-similarity); }
+  .val { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-soft); }
+
+  .scale-ticks {
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    margin-left: 6.3rem; margin-top: 0.4rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.3rem;
+    font-family: var(--font-mono); font-size: 0.64rem; color: var(--ink-faint);
+  }
+  .scale-ticks span:not(:first-child) { text-align: center; }
+  .scale-ticks span:first-child { text-align: left; }
+
+  /* --- distribution ------------------------------------------------------ */
+  .dist { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.8rem; height: 190px; }
+  .bucket { display: grid; grid-template-rows: 1fr auto; gap: 0.5rem; }
+  .cols { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; }
+  .col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; flex: 1; max-width: 3rem; }
+  .count { font-family: var(--font-mono); font-size: 0.64rem; color: var(--ink-faint); margin-bottom: 0.25rem; }
+  .stalk { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; }
+  .stalk.quality { background: var(--series-quality); }
+  .stalk.similarity { background: var(--series-similarity); }
+  .blabel {
+    text-align: center; font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--ink-soft); border-top: 1px solid var(--rule); padding-top: 0.35rem;
+  }
+  .axis-note { font-family: var(--font-mono); font-size: 0.64rem; color: var(--ink-faint); margin-top: 0.4rem; }
+
+  /* --- table ------------------------------------------------------------- */
+  .table-view { margin-top: 2rem; }
+  summary {
+    font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-soft);
+    cursor: pointer; padding: 0.4rem 0;
+  }
+  summary:hover { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; font-size: var(--step--1); }
+  caption { text-align: left; color: var(--ink-faint); font-size: 0.72rem; padding-bottom: 0.6rem; }
+  th, td { text-align: left; padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--rule); }
+  thead th {
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 400;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint);
+  }
+  .r { text-align: right; font-family: var(--font-mono); }
+  .dim { color: var(--ink-faint); }
+  .total th, .total td { border-top: 1px solid var(--rule-strong); font-weight: 500; }
+
+  .provenance { margin-top: 1.6rem; font-size: var(--step--1); color: var(--ink-faint); max-width: 62ch; }
+</style>

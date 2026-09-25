@@ -1,0 +1,65 @@
+---
+const rows = [
+  { score: 5, quality: 'Broadcasting level: indistinguishable from a human recording.', similarity: 'Definitely the same person; tone and speaking style match.' },
+  { score: 4, quality: 'Natural, clear and understandable.', similarity: 'Sounds like the same person, but tone and speaking style don’t match.' },
+  { score: 3, quality: 'Understandable and acceptable, but the rhythmic pauses are not good enough.', similarity: 'High chance of being the same person; some similarity.' },
+  { score: 2, quality: 'Some words are unclear; pronunciation issues.', similarity: 'Low chance of being the same person; much difference.' },
+  { score: 1, quality: 'Not understandable at all.', similarity: 'Definitely not the same person — even the gender differs.' },
+];
+---
+<table class="rubric">
+  <caption>The five-point scale raters were given, for both axes.</caption>
+  <thead>
+    <tr>
+      <th scope="col" class="num">Score</th>
+      <th scope="col">Speech quality</th>
+      <th scope="col">Speaker similarity</th>
+    </tr>
+  </thead>
+  <tbody>
+    {rows.map((row) => (
+      <tr>
+        <th scope="row" class="num">{row.score}</th>
+        <td>{row.quality}</td>
+        <td>{row.similarity}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+<style>
+  .rubric {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--step--1);
+    margin-top: 1.4rem;
+  }
+  caption {
+    text-align: left;
+    color: var(--ink-faint);
+    font-size: var(--step--1);
+    padding-bottom: 0.7rem;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  thead th {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 400;
+    border-bottom-color: var(--rule-strong);
+  }
+  td { color: var(--ink-soft); }
+  .num { width: 3.5rem; font-family: var(--font-mono); color: var(--accent); font-weight: 500; }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+  @media (max-width: 44rem) {
+    th, td { padding: 0.55rem 0.5rem; }
+    .rubric { font-size: 0.8rem; }
+  }
+</style>
