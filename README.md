@@ -12,7 +12,7 @@ servers, each server its own Hugging Face Space and its own repository.
 | Route | What | Backend |
 |---|---|---|
 | `/` | Zero-shot voice cloning. The demo and write-up. | [`../server`](https://huggingface.co/spaces/lord-reso/Nepali-Voice-Cloning) |
-| `/tts` | Nepali text-to-speech, one fixed female voice. | [`../host`](https://huggingface.co/spaces/lord-reso/host) |
+| `/tts` | Nepali text-to-speech, one fixed female voice. | [`../tts-only`](https://huggingface.co/spaces/lord-reso/tts-only) |
 | `/mos` | The listening study: 57 raters, 50 clips, scores and caveats. | none, static |
 
 ---
@@ -67,9 +67,9 @@ Two consequences:
 |---|---|---|
 | Synthesizer | Tacotron | Tacotron2 |
 | Vocoder | WaveRNN, autoregressive | HiFi-GAN, one pass |
-| Speaker | zero-shot, from ~5s of reference | one fixed embedding |
+| Speaker | zero-shot, from ~5s of reference | none — baked into the checkpoint |
 | Output | 16 kHz | 22.05 kHz |
-| Measured latency | 13–45s, vocoder-bound | ~16s |
+| Measured latency | 13–45s, vocoder-bound | ~16s before the Space was reworked |
 
 What they do share is the text front-end: ASCII symbol set, `unidecode` first, digits
 dropped. That is why `nepali-input.ts` is shared and why the same warning appears on both.
@@ -96,8 +96,11 @@ src/
   data/         speakers.json      — the voice library the cloning studio offers
                 mos-speakers.json  — the study's 50-clip manifest
                 mos-scores.json    — aggregated ratings, no rater identities
-  scripts/      studio.ts · viz.ts · api.ts      — the cloning island
-                tts.ts    · tts-api.ts          — the TTS island
+  scripts/      studio.ts · api.ts   — the cloning island
+                tts.ts    · tts-api.ts — the TTS island
+                viz.ts          — canvas renderers: matrices, waveforms, embeddings
+                audio-player.ts — waveform + transport, shared by both studios
+                plot-zoom.ts    — fullscreen plot dialog, shared by both studios
                 nepali-input.ts — romanised/Preeti entry, shared by both studios
                 theme.ts        — the toggle, shared by all three pages
   styles/       tokens.css — every colour, both themes
@@ -122,10 +125,10 @@ frontends is what made one implementation possible.
 
 ### The TTS backend contract lives in one file
 
-`tts-api.ts` is the only thing that knows the TTS Space's wire format. That Space still
-returns server-rendered PNGs — about 29% of a 705 KB response — where the cloning Space
-returns raw arrays for the browser to draw. It is being reworked separately; when its
-contract changes, `tts-api.ts` changes and `tts.ts` should not have to.
+`tts-api.ts` is the only thing that knows the TTS Space's wire format, and that seam
+earned itself: the Space moved from a blocking `POST /synthesize` returning two
+server-rendered PNGs to a job API returning raw arrays, and only this file changed.
+Both backends now speak the same shape — enqueue, follow over SSE, draw the arrays.
 
 ### The listening study
 
@@ -136,7 +139,7 @@ the one page that answers "but how good is it actually" behind a footer link on 
 origin.
 
 It ships **no JavaScript** beyond the shared theme toggle: 0.25 kB gzipped against the
-studio's 9.4 kB. The bar and distribution charts are CSS, and all 50 players are
+cloning studio's 4.5 kB. The bar and distribution charts are CSS, and all 50 players are
 `preload="none"`, so none of the 7.7 MB of audio loads until someone presses play.
 
 ### The browser calls the model server directly
@@ -156,6 +159,10 @@ at one a day, so spending a job per Space would leave no margin for a missed fir
 Two firings against a 48h timeout leaves 36h of slack even if one is skipped.
 
 ## Develop
+
+Node 24, pinned in `package.json` `engines.node` and `.nvmrc`. Vercel reads the former
+to pick its build image — an open range like `>=20` is not resolved to a major, so it
+silently fell back to the project default (Node 18) until this was pinned.
 
 ```bash
 npm install
