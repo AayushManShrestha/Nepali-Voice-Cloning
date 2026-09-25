@@ -22,6 +22,8 @@ import type { NepaliInput } from './nepali-input';
 import { estimateWithQueue, synthesize } from './tts-api';
 import type { TtsJobStatus, TtsResult } from './tts-api';
 import { RAMPS, drawMatrix } from './viz';
+import { mountPlayer, paintWaveform } from './audio-player';
+import { wireZoom } from './plot-zoom';
 
 const $ = <T extends Element>(sel: string, root: ParentNode = document): T | null =>
   root.querySelector<T>(sel);
@@ -40,7 +42,6 @@ class Tts {
   private text: NepaliInput | null;
   private busy = false;
   private etaTimer: number | null = null;
-  private lastUrl: string | null = null;
   private queueAhead = 0;
   private textLength = 0;
 
@@ -69,7 +70,7 @@ class Tts {
 
     try {
       const result = await synthesize(text, (status) => this.onProgress(status));
-      this.render(result);
+      await this.render(result);
     } catch (error) {
       this.showError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -150,26 +151,8 @@ class Tts {
     if (node) node.hidden = true;
   }
 
-  private render(result: TtsResult): void {
+  private async render(result: TtsResult): Promise<void> {
     const section = $<HTMLElement>('[data-tts-results]');
-    const audio = $<HTMLAudioElement>('[data-tts-audio]');
-    const download = $<HTMLAnchorElement>('[data-tts-download]');
-    const meta = $<HTMLElement>('[data-tts-meta]');
-
-    // Release the previous clip before replacing it, or every synthesis leaks a blob.
-    if (this.lastUrl) URL.revokeObjectURL(this.lastUrl);
-    this.lastUrl = result.audioUrl;
-
-    if (audio) audio.src = result.audioUrl;
-    if (download) {
-      download.href = result.audioUrl;
-      download.hidden = false;
-    }
-    if (meta) {
-      meta.textContent =
-        `${result.duration.toFixed(2)}s · ${(result.sampleRate / 1000).toFixed(2)} kHz · ` +
-        `${result.elapsed.toFixed(1)}s round trip`;
-    }
 
     const warning = $<HTMLElement>('[data-tts-truncated]');
     if (warning) warning.hidden = !result.reachedMaxSteps;
@@ -184,32 +167,65 @@ class Tts {
     // would then be stretched across the element -- a flat wash where the plot
     // should be. The cloning studio has always done it in this order.
     if (section) section.hidden = false;
+
+    await mountPlayer(
+      'tts',
+      result.audio,
+      `${result.duration.toFixed(2)}s · ${(result.sampleRate / 1000).toFixed(2)} kHz · ` +
+        `${result.elapsed.toFixed(1)}s round trip`,
+      'nepali-tts.wav',
+    );
     redrawPlots(result);
 
     section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
+/** Paint one plot onto any canvas -- shared by the inline figures and the dialog, so
+ *  an enlarged plot is genuinely re-rendered at the larger size. */
+function paint(key: string, canvas: HTMLCanvasElement, result: TtsResult): void {
+  switch (key) {
+    case 'mel':
+      drawMatrix(canvas, result.mel, {
+        stops: RAMPS.viridis,
+        xLabel: 'Time Steps',
+        yLabel: 'Mel Channels',
+      });
+      break;
+    case 'alignment':
+      // The server already transposes to (encoder, decoder), so decoder time runs
+      // along x -- which is how alignment plots are conventionally read.
+      drawMatrix(canvas, result.alignment, {
+        smooth: false,
+        stops: RAMPS.viridis,
+        xLabel: 'Decoder Time Steps',
+        yLabel: 'Encoder Time Steps',
+      });
+      break;
+    case 'wave-tts':
+      paintWaveform('tts', canvas);
+      break;
+  }
+}
+
+const INLINE_PLOTS = ['mel', 'alignment'];
+
+const zoom = wireZoom(
+  (key, canvas) => {
+    if (latest) paint(key, canvas, latest);
+  },
+  () => latest !== null,
+  INLINE_PLOTS.map((key) => [`[data-tts-plot="${key}"]`, key] as [string, string]),
+);
+
 function redrawPlots(result: TtsResult): void {
-  const mel = $<HTMLCanvasElement>('[data-tts-plot="mel"]');
-  if (mel) {
-    drawMatrix(mel, result.mel, {
-      stops: RAMPS.viridis,
-      xLabel: 'Time Steps',
-      yLabel: 'Mel Channels',
-    });
+  for (const key of INLINE_PLOTS) {
+    const canvas = $<HTMLCanvasElement>(`[data-tts-plot="${key}"]`);
+    if (canvas) paint(key, canvas, result);
   }
-  const alignment = $<HTMLCanvasElement>('[data-tts-plot="alignment"]');
-  if (alignment) {
-    // The server already transposes to (encoder, decoder), so decoder time runs along
-    // x -- which is how alignment plots are conventionally read.
-    drawMatrix(alignment, result.alignment, {
-      smooth: false,
-      stops: RAMPS.viridis,
-      xLabel: 'Decoder Time Steps',
-      yLabel: 'Encoder Time Steps',
-    });
-  }
+  const wave = $<HTMLCanvasElement>('[data-wave="tts"]');
+  if (wave) paintWaveform('tts', wave);
+  zoom.render();
 }
 
 function renderTimings(timings: Record<string, number>): void {

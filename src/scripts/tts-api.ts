@@ -53,8 +53,8 @@ interface TtsPayload {
 }
 
 export interface TtsResult {
-  /** Object URL for the synthesised wav. Caller revokes it. */
-  audioUrl: string;
+  /** Raw wav bytes. The shared player owns the object URL and its revocation. */
+  audio: ArrayBuffer;
   duration: number;
   sampleRate: number;
   mel: Matrix;
@@ -92,16 +92,16 @@ export async function checkHealth(timeoutMs = 8000): Promise<TtsHealth | null> {
   }
 }
 
-function base64ToBlob(base64: string, type: string): Blob {
+function base64ToBytes(base64: string): Uint8Array {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type });
+  return bytes;
 }
 
 function toResult(payload: TtsPayload, startedAt: number): TtsResult {
   return {
-    audioUrl: URL.createObjectURL(base64ToBlob(payload.audio, 'audio/wav')),
+    audio: base64ToBytes(payload.audio).buffer as ArrayBuffer,
     duration: payload.duration,
     sampleRate: payload.sample_rate,
     mel: payload.mel,

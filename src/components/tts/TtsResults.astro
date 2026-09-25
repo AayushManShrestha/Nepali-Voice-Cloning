@@ -1,17 +1,26 @@
 ---
 /**
- * TTS output.
+ * TTS output, grouped by pipeline stage.
  *
- * Canvases, not images: the Space returns mel and alignment as raw arrays now, so
- * these are drawn client-side by scripts/viz.ts -- the same renderer the cloning
- * studio uses, which means they follow the theme and stay legible in both.
+ * Structurally this mirrors the cloning studio's Results.astro -- numbered stage
+ * blocks, figures that expand to fullscreen, a waveform with a real transport --
+ * because the two pages are the same project and should not feel like two projects.
+ * The differences are only the ones the model actually imposes: two stages rather
+ * than three, and nothing to pair an "original" against, since there is no reference
+ * audio in a text-to-speech pipeline.
  */
+const expandIcon =
+  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>';
 ---
 <section class="results" id="results" data-tts-results hidden>
   <div class="shell">
     <header class="head">
       <p class="eyebrow">Output</p>
       <h2>What came back.</h2>
+      <p class="intro">
+        Stage by stage, drawn in your browser from the arrays the server sends.
+        Click any plot to enlarge it.
+      </p>
     </header>
 
     <p class="truncated" data-tts-truncated hidden>
@@ -21,39 +30,86 @@
       in the alignment plot as a diagonal that runs flat into the right-hand edge.
     </p>
 
-    <div class="stack">
-      <figure class="audio">
+    <!-- ============================================== stage 01: synthesizer -->
+    <section class="stage-block">
+      <header class="stage-head">
+        <p class="stage-n">01</p>
+        <div>
+          <h3>Synthesizer</h3>
+          <p>Tacotron2 decodes the text into 80 mel bands over time, attending to
+             characters as it goes. Both plots come from the same forward pass.</p>
+        </div>
+      </header>
+
+      <div class="pair">
+        <figure>
+          <figcaption>
+            Mel spectrogram
+            <button class="expand" type="button" data-expand="mel" data-expand-title="mel spectrogram"
+                    aria-label="View mel spectrogram full screen" set:html={expandIcon} />
+          </figcaption>
+          <canvas data-tts-plot="mel" height="280" role="img"
+                  aria-label="Mel spectrogram of the synthesised audio"></canvas>
+        </figure>
+        <figure>
+          <figcaption>
+            Attention alignment
+            <button class="expand" type="button" data-expand="alignment" data-expand-title="attention alignment"
+                    aria-label="View attention alignment full screen" set:html={expandIcon} />
+          </figcaption>
+          <canvas data-tts-plot="alignment" height="280" role="img"
+                  aria-label="Attention alignment matrix"></canvas>
+        </figure>
+      </div>
+      <p class="note">
+        A clean diagonal in the alignment means the model tracked the text and stopped
+        where the words did; one that runs flat into the right-hand edge means it never
+        found the end.
+      </p>
+    </section>
+
+    <!-- ================================================= stage 02: vocoder -->
+    <section class="stage-block">
+      <header class="stage-head">
+        <p class="stage-n">02</p>
+        <div>
+          <h3>Vocoder</h3>
+          <p>HiFi-GAN turns the spectrogram back into pressure over time, in a single
+             pass rather than sample by sample. Click the plot to seek.</p>
+        </div>
+      </header>
+
+      <figure class="full">
         <figcaption>
           Synthesised audio
-          <span class="who" data-tts-meta></span>
+          <span class="who" data-player-name="tts"></span>
+          <button class="expand" type="button" data-expand="wave-tts" data-expand-title="waveform"
+                  aria-label="View waveform full screen" set:html={expandIcon} />
         </figcaption>
-        <audio controls data-tts-audio preload="metadata"></audio>
-        <p class="row">
-          <a class="dl" data-tts-download download="nepali-tts.wav" hidden>Download wav</a>
-        </p>
+        <canvas data-wave="tts" height="220" role="img"
+                aria-label="Waveform of the synthesised audio"></canvas>
+        <div class="transport">
+          <button type="button" data-play="tts" aria-label="Play synthesised audio">
+            <svg class="i-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>
+            <svg class="i-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z"/></svg>
+          </button>
+          <p class="time"><span data-time="tts">0:00</span> / <span data-dur="tts">0:00</span></p>
+          <a class="dl" data-download="tts" download hidden>Download</a>
+        </div>
+        <audio data-audio="tts" preload="metadata"></audio>
       </figure>
+    </section>
 
-      <figure>
-        <figcaption>Mel spectrogram</figcaption>
-        <p class="note">
-          80 mel bands over time &mdash; what Tacotron2 produced and handed to the
-          vocoder, after the postnet.
-        </p>
-        <canvas data-tts-plot="mel" height="280" role="img"
-                aria-label="Mel spectrogram of the synthesised audio"></canvas>
-      </figure>
-
-      <figure>
-        <figcaption>Attention alignment</figcaption>
-        <p class="note">
-          Which character the decoder attended to at each step. A clean diagonal that
-          finishes early means the model tracked the text and stopped; one that runs
-          flat to the right-hand edge means it never found the end.
-        </p>
-        <canvas data-tts-plot="alignment" height="300" role="img"
-                aria-label="Attention alignment matrix"></canvas>
-      </figure>
-    </div>
+    <dialog class="zoom" data-zoom aria-label="Enlarged plot">
+      <div class="zoom-bar">
+        <p class="zoom-title" data-zoom-title></p>
+        <button class="zoom-close" type="button" data-zoom-close aria-label="Close enlarged view">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <canvas data-zoom-canvas role="img" aria-label="Enlarged plot"></canvas>
+      <p class="zoom-hint">Press <kbd>Esc</kbd> or click outside to close</p>
+    </dialog>
 
     <div class="timings">
       <p class="eyebrow">Server timings</p>
@@ -64,11 +120,12 @@
 
 <style>
   .results { padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 6vw, 5rem); scroll-margin-top: 4rem; }
-  .head { margin-bottom: clamp(1.6rem, 3vw, 2.4rem); }
-  h2 { font-size: var(--step-3); margin-top: 0.4em; }
+  .head { max-width: 60ch; margin-bottom: clamp(2rem, 4vw, 3rem); }
+  h2 { font-size: var(--step-3); margin-block: 0.4em 0.5em; }
+  .intro { color: var(--ink-soft); font-size: var(--step--1); }
 
   .truncated {
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.4rem;
     padding: 0.7rem 0.9rem;
     font-size: var(--step--1);
     line-height: 1.6;
@@ -80,33 +137,52 @@
   }
   .truncated b { font-weight: 500; }
 
-  .stack {
-    display: grid; gap: 1px;
-    background: var(--rule);
-    border: 1px solid var(--rule);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-  }
+  .stage-block { margin-bottom: clamp(2.2rem, 4vw, 3.4rem); }
 
-  figure { background: var(--paper); margin: 0; padding: 1.1rem 1.2rem 1.3rem; }
+  .stage-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.4rem 1rem;
+    align-items: start;
+    padding-bottom: 0.9rem;
+    margin-bottom: 1.1rem;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  @media (min-width: 46rem) {
+    .stage-head { align-items: center; }
+  }
+  .stage-n {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    width: 2rem; height: 2rem;
+    display: grid; place-items: center;
+  }
+  .stage-head h3 { font-size: var(--step-2); }
+  .stage-head p { color: var(--ink-soft); font-size: var(--step--1); margin-top: 0.3rem; max-width: 62ch; }
+
+  .pair { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: var(--radius-lg); overflow: hidden; }
+  @media (min-width: 52rem) { .pair { grid-template-columns: 1fr 1fr; } }
+
+  figure { background: var(--paper); margin: 0; padding: 1.1rem 1.2rem 1.2rem; }
   figcaption {
     font-family: var(--font-mono);
     font-size: 0.72rem;
     letter-spacing: 0.04em;
     color: var(--ink-soft);
     margin-bottom: 0.7rem;
-    display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
+    display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
   }
   .who { color: var(--ink-faint); font-size: 0.68rem; }
-  .note { color: var(--ink-soft); font-size: var(--step--1); margin-bottom: 0.9rem; max-width: 70ch; }
 
-  audio { width: 100%; height: 40px; display: block; }
-  .row { display: flex; margin-top: 0.7rem; }
-  .dl {
-    font-family: var(--font-mono); font-size: 0.7rem;
-    letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint);
+  .full {
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
   }
-  .dl:hover { color: var(--accent); }
+  .note { color: var(--ink-soft); font-size: var(--step--1); margin-top: 0.9rem; max-width: 70ch; }
 
   canvas {
     width: 100%;
@@ -114,12 +190,90 @@
     background: var(--viz-bg);
     border-radius: var(--radius);
   }
-  [data-tts-plot='mel'] { height: 280px; }
-  [data-tts-plot='alignment'] { height: 300px; }
+  .pair [data-tts-plot] { height: 280px; }
+  [data-wave] { height: 200px; cursor: pointer; }
   @media (max-width: 52rem) {
-    [data-tts-plot='mel'] { height: 220px; }
-    [data-tts-plot='alignment'] { height: 240px; }
+    .pair [data-tts-plot] { height: 230px; }
   }
+
+  .expand {
+    margin-left: auto;
+    display: grid; place-items: center;
+    width: 22px; height: 22px; padding: 0;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    color: var(--ink-faint);
+    cursor: pointer;
+    flex: none;
+    transition: border-color 0.18s var(--ease), color 0.18s var(--ease);
+  }
+  .expand:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* --- fullscreen plot --------------------------------------------------- */
+  .zoom {
+    width: min(96vw, 1600px);
+    height: min(92vh, 1000px);
+    padding: 0;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-lg);
+    background: var(--paper);
+    color: var(--ink);
+    overflow: hidden;
+  }
+  .zoom::backdrop { background: rgb(0 0 0 / 0.62); backdrop-filter: blur(3px); }
+  .zoom[open] { display: grid; grid-template-rows: auto 1fr auto; }
+
+  .zoom-bar {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.8rem 1rem 0.8rem 1.2rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .zoom-title {
+    font-family: var(--font-mono); font-size: 0.76rem;
+    letter-spacing: 0.04em; color: var(--ink-soft); margin: 0;
+  }
+  .zoom-close {
+    margin-left: auto;
+    display: grid; place-items: center;
+    width: 30px; height: 30px; padding: 0;
+    background: transparent; border: 1px solid var(--rule);
+    border-radius: var(--radius); color: var(--ink-soft); cursor: pointer;
+    transition: all 0.18s var(--ease);
+  }
+  .zoom-close:hover { border-color: var(--accent); color: var(--accent); }
+  .zoom canvas { width: 100%; height: 100%; border-radius: 0; }
+  .zoom-hint {
+    padding: 0.55rem 1.2rem 0.75rem;
+    font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-faint); margin: 0;
+  }
+  kbd {
+    font-family: var(--font-mono); font-size: 0.9em;
+    border: 1px solid var(--rule-strong); border-bottom-width: 2px;
+    border-radius: 3px; padding: 0.05em 0.3em;
+  }
+
+  /* --- transport ---------------------------------------------------------- */
+  .transport { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.7rem; }
+  .transport button {
+    width: 30px; height: 30px; display: grid; place-items: center;
+    background: var(--ink); color: var(--paper);
+    border: 0; border-radius: 50%; cursor: pointer; flex: none;
+    transition: background 0.18s var(--ease);
+  }
+  .transport button:hover { background: var(--accent); }
+  .transport button svg { grid-area: 1 / 1; }
+  .transport button .i-pause { display: none; }
+  .transport button[data-playing] .i-play { display: none; }
+  .transport button[data-playing] .i-pause { display: block; }
+  .time { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-faint); margin: 0; }
+  .dl {
+    margin-left: auto; font-family: var(--font-mono); font-size: 0.7rem;
+    letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .dl:hover { color: var(--accent); }
+  /* The <audio> element only plays; the canvas and transport above are the UI. */
+  audio { display: none; }
 
   .timings { margin-top: 1.8rem; }
   /* Injected via innerHTML at runtime, so Astro's scoping attribute never reaches

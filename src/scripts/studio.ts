@@ -10,15 +10,9 @@ import { initNepaliInput } from './nepali-input';
 import type { NepaliInput } from './nepali-input';
 import { checkHealth, estimateWithQueue, synthesize, STAGES } from './api';
 import type { JobStatus, SynthesisResult } from './api';
-import {
-  RAMPS,
-  base64ToBytes,
-  computePeaks,
-  decodeAudio,
-  drawEmbedding,
-  drawMatrix,
-  drawWaveform,
-} from './viz';
+import { RAMPS, base64ToBytes, drawEmbedding, drawMatrix } from './viz';
+import { mountPlayer, mountedPlayers, paintWaveform } from './audio-player';
+import { wireZoom } from './plot-zoom';
 
 type Source = 'library' | 'record' | 'upload';
 
@@ -432,68 +426,6 @@ class Studio {
    -------------------------------------------------------------------------- */
 let latest: SynthesisResult | null = null;
 let showEmbedValues = false;
-const peakCache = new Map<string, { peaks: Float32Array; duration: number }>();
-const objectUrls = new Map<string, string>();
-
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds)) return '0:00';
-  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-}
-
-async function mountPlayer(
-  which: string,
-  bytes: ArrayBuffer,
-  subtitle: string,
-  filename: string,
-): Promise<void> {
-  const audio = $<HTMLAudioElement>(`[data-audio="${which}"]`);
-  const canvas = $<HTMLCanvasElement>(`[data-wave="${which}"]`);
-  const play = $<HTMLButtonElement>(`[data-play="${which}"]`);
-  const name = $<HTMLElement>(`[data-player-name="${which}"]`);
-  const time = $<HTMLElement>(`[data-time="${which}"]`);
-  const dur = $<HTMLElement>(`[data-dur="${which}"]`);
-  const download = $<HTMLAnchorElement>(`[data-download="${which}"]`);
-  if (!audio || !canvas || !play) return;
-
-  const previous = objectUrls.get(which);
-  if (previous) URL.revokeObjectURL(previous);
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
-  objectUrls.set(which, url);
-  audio.src = url;
-  if (name) name.textContent = subtitle;
-  if (download) {
-    download.href = url;
-    download.download = filename;
-    download.hidden = false;
-  }
-
-  const { samples, duration } = await decodeAudio(bytes);
-  const peaks = computePeaks(samples, Math.max(200, Math.round(canvas.clientWidth / 2)));
-  peakCache.set(which, { peaks, duration });
-  drawWaveform(canvas, peaks, { duration });
-  if (dur) dur.textContent = formatTime(duration);
-
-  play.onclick = () => (audio.paused ? void audio.play() : audio.pause());
-  audio.onplay = () => play.setAttribute('data-playing', '');
-  audio.onpause = () => play.removeAttribute('data-playing');
-  audio.onended = () => {
-    play.removeAttribute('data-playing');
-    drawWaveform(canvas, peaks, { duration });
-  };
-  audio.ontimeupdate = () => {
-    if (time) time.textContent = formatTime(audio.currentTime);
-    drawWaveform(canvas, peaks, {
-      duration,
-      playhead: audio.currentTime / (audio.duration || 1),
-    });
-  };
-  canvas.onclick = (event) => {
-    const rect = canvas.getBoundingClientRect();
-    // The plot is inset by the axis margins; map the click onto the plot area.
-    const frac = (event.clientX - rect.left - 46) / (rect.width - 58);
-    audio.currentTime = Math.min(1, Math.max(0, frac)) * (audio.duration || 0);
-  };
-}
 
 /**
  * Cosine similarity between the reference and re-extracted embeddings, returned with
@@ -559,17 +491,9 @@ function paint(key: PlotKey, canvas: HTMLCanvasElement, result: SynthesisResult)
       });
       break;
     case 'wave-reference':
-    case 'wave-cloned': {
-      const which = key === 'wave-reference' ? 'reference' : 'cloned';
-      const cached = peakCache.get(which);
-      if (!cached) break;
-      const audio = $<HTMLAudioElement>(`[data-audio="${which}"]`);
-      drawWaveform(canvas, cached.peaks, {
-        duration: cached.duration,
-        playhead: audio && !audio.paused ? audio.currentTime / (audio.duration || 1) : -1,
-      });
+    case 'wave-cloned':
+      paintWaveform(key === 'wave-reference' ? 'reference' : 'cloned', canvas);
       break;
-    }
   }
 }
 
@@ -586,9 +510,7 @@ function redrawPlots(result: SynthesisResult): void {
   }
 
   // If the fullscreen view is open, keep it in sync (theme flips, value toggle).
-  const dialog = $<HTMLDialogElement>('[data-zoom]');
-  const zoomCanvas = $<HTMLCanvasElement>('[data-zoom-canvas]');
-  if (dialog?.open && zoomCanvas && openPlot) paint(openPlot, zoomCanvas, result);
+  zoom?.render();
 
   const cosBox = $<HTMLElement>('[data-cosine]');
   if (cosBox) {
@@ -608,66 +530,21 @@ function redrawPlots(result: SynthesisResult): void {
     }
   }
 
-  for (const which of peakCache.keys()) {
+  for (const which of mountedPlayers()) {
     const canvas = $<HTMLCanvasElement>(`[data-wave="${which}"]`);
-    if (canvas) paint(`wave-${which}` as PlotKey, canvas, result);
+    if (canvas) paintWaveform(which, canvas);
   }
 }
 
 /* --- fullscreen ----------------------------------------------------------- */
 
-let openPlot: PlotKey | null = null;
-
-function wireZoom(): void {
-  const dialog = $<HTMLDialogElement>('[data-zoom]');
-  const canvas = $<HTMLCanvasElement>('[data-zoom-canvas]');
-  const title = $<HTMLElement>('[data-zoom-title]');
-  if (!dialog || !canvas) return;
-
-  const render = () => {
-    if (openPlot && latest) paint(openPlot, canvas, latest);
-  };
-
-  const open = (key: PlotKey, label: string) => {
-    if (!latest) return;
-    openPlot = key;
-    if (title) title.textContent = label;
-    dialog.showModal();
-    // Wait for layout so the canvas has its final size before drawing into it.
-    requestAnimationFrame(render);
-  };
-
-  for (const button of $$<HTMLButtonElement>('[data-expand]')) {
-    button.addEventListener('click', (event) => {
-      event.preventDefault();
-      open(button.dataset.expand as PlotKey, button.dataset.expandTitle ?? 'Plot');
-    });
-  }
-
-  // Clicking a plot itself opens it too -- except the waveforms, where a click
-  // already means "seek".
-  for (const key of INLINE_PLOTS) {
-    const inline = $<HTMLCanvasElement>(`[data-plot="${key}"]`);
-    if (!inline) continue;
-    inline.style.cursor = 'zoom-in';
-    inline.addEventListener('click', () => {
-      const label = inline.closest('figure')?.querySelector('figcaption')?.textContent?.trim();
-      open(key, label ?? 'Plot');
-    });
-  }
-
-  $<HTMLButtonElement>('[data-zoom-close]')?.addEventListener('click', () => dialog.close());
-
-  // Click outside the panel closes it. <dialog> handles Escape natively.
-  dialog.addEventListener('click', (event) => {
-    if (event.target === dialog) dialog.close();
-  });
-  dialog.addEventListener('close', () => { openPlot = null; });
-
-  window.addEventListener('resize', () => {
-    if (dialog.open) render();
-  });
-}
+const zoom = wireZoom(
+  (key, canvas) => {
+    if (latest) paint(key as PlotKey, canvas, latest);
+  },
+  () => latest !== null,
+  INLINE_PLOTS.map((key) => [`[data-plot="${key}"]`, key] as [string, string]),
+);
 
 function renderTimings(timings: Record<string, number>): void {
   const list = $<HTMLElement>('[data-timings]');
@@ -696,7 +573,6 @@ document.addEventListener('themechange', () => {
   if (latest) redrawPlots(latest);
 });
 
-wireZoom();
 
 const embedToggle = $<HTMLInputElement>('[data-embed-values]');
 embedToggle?.addEventListener('change', () => {
