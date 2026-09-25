@@ -6,15 +6,14 @@ trained on that speaker.
 
 **Live:** [nepali-voice-cloning.vercel.app](https://nepali-voice-cloning.vercel.app)
 
-This repository is the frontend. The model server lives in
-[`../server`](https://huggingface.co/spaces/lord-reso/Nepali-Voice-Cloning).
+This repository is the whole frontend for the project — three pages against two model
+servers, each server its own Hugging Face Space and its own repository.
 
-Two pages:
-
-| Route | What |
-|---|---|
-| `/` | The demo and write-up. One interactive island. |
-| `/mos` | The listening study: 57 raters, 50 clips, the scores and the caveats. |
+| Route | What | Backend |
+|---|---|---|
+| `/` | Zero-shot voice cloning. The demo and write-up. | [`../server`](https://huggingface.co/spaces/lord-reso/Nepali-Voice-Cloning) |
+| `/tts` | Nepali text-to-speech, one fixed female voice. | [`../host`](https://huggingface.co/spaces/lord-reso/host) |
+| `/mos` | The listening study: 57 raters, 50 clips, scores and caveats. | none, static |
 
 ---
 
@@ -60,11 +59,26 @@ Two consequences:
   `म २०२४ मा` transliterates to `ma 2024 ma` and the number disappears. The UI warns you.
 - **Out-of-vocabulary characters vanish silently**, including the danda `।`.
 
+## Two models, one site
+
+`/` and `/tts` are different networks on different Spaces, sharing no weights:
+
+| | `/` cloning | `/tts` |
+|---|---|---|
+| Synthesizer | Tacotron | Tacotron2 |
+| Vocoder | WaveRNN, autoregressive | HiFi-GAN, one pass |
+| Speaker | zero-shot, from ~5s of reference | one fixed embedding |
+| Output | 16 kHz | 22.05 kHz |
+| Measured latency | 13–45s, vocoder-bound | ~16s |
+
+What they do share is the text front-end: ASCII symbol set, `unidecode` first, digits
+dropped. That is why `nepali-input.ts` is shared and why the same warning appears on both.
+
 ## Stack
 
-Astro 5, static output, TypeScript. The page is mostly static content around one
-interactive island, so it ships **no JavaScript** outside the studio — about 7 kB gzipped
-including the Nepali keyboard library.
+Astro 5, static output, TypeScript. Each page is static content around at most one
+interactive island, and Astro splits per route — so `/mos` ships only the theme toggle,
+and `/tts` never loads the cloning studio's canvas renderers.
 
 The plots are drawn in the browser on `<canvas>` from raw arrays. The backend used to
 render them as matplotlib PNGs — 592 kB per response, 86% of it pictures. Moving that to
@@ -75,17 +89,43 @@ measurements.
 
 ```
 src/
-  pages/        index.astro (demo) · mos.astro (listening study)
+  pages/        index.astro (cloning) · tts.astro (TTS) · mos.astro (study)
   components/   Hero, Pipeline, Studio, Results, Notes, header/footer
-    mos/        Scores, Rubric, SpeakerPanel — the study's own components
-  data/         speakers.json      — the voice library the studio offers
+    tts/        TtsStudio, TtsResults
+    mos/        Scores, Rubric, SpeakerPanel
+  data/         speakers.json      — the voice library the cloning studio offers
                 mos-speakers.json  — the study's 50-clip manifest
                 mos-scores.json    — aggregated ratings, no rater identities
-  scripts/      studio.ts (island) · viz.ts (canvas) · api.ts (backend client)
-                theme.ts — the toggle, shared by both pages
+  scripts/      studio.ts · viz.ts · api.ts      — the cloning island
+                tts.ts    · tts-api.ts          — the TTS island
+                nepali-input.ts — romanised/Preeti entry, shared by both studios
+                theme.ts        — the toggle, shared by all three pages
   styles/       tokens.css — every colour, both themes
-api/warm.js     Vercel Function: daily cron ping, see below
+api/warm.js     Vercel Function: cron ping for both Spaces, see below
 ```
+
+### One Nepali text input, not two
+
+`nepali-input.ts` owns romanised-as-you-type, the Preeti layout, the key map and the
+digit warning. Both studios import it, and it builds as a shared chunk (~1.9 kB
+gzipped) rather than shipping twice.
+
+It exists because the TTS page used to be a separate project that solved the same
+problem again with a CDN `<script>` tag and a partly-wired writenepali.com embed —
+which had drifted far enough to ship two elements with the same `id`. Merging the two
+frontends is what made one implementation possible.
+
+> **The hooks are a contract.** `[data-mode]`, `[data-count]`, `[data-digit-warning]`,
+> `[data-roman-hint]`, `[data-keyhelp]`, `[data-keyboard-toggle]`, `[data-preeti-map]`
+> and `[data-preset]` are queried by that module. Rename one in a component and it
+> silently stops working in both studios.
+
+### The TTS backend contract lives in one file
+
+`tts-api.ts` is the only thing that knows the TTS Space's wire format. That Space still
+returns server-rendered PNGs — about 29% of a 705 KB response — where the cloning Space
+returns raw arrays for the browser to draw. It is being reworked separately; when its
+contract changes, `tts-api.ts` changes and `tts.ts` should not have to.
 
 ### The listening study
 
@@ -105,11 +145,15 @@ Synthesis is **not** proxied through Vercel. A Hobby serverless function caps at
 synthesis can exceed that; the Space already sends `CORS: *`, so the proxy would add a hop
 and a failure mode while buying nothing.
 
-### Keeping the Space awake
+### Keeping both Spaces awake
 
-The Hugging Face Space sleeps after 48 hours idle (`gcTimeout: 172800`), and a cold start
-means loading ~490 MB of weights. `api/warm.js` runs once a day on a Vercel cron so a
-visitor never pays for that.
+Each Space sleeps after 48 hours idle (`gcTimeout: 172800`), and a cold start means
+reloading its weights. `api/warm.js` pings both from a single invocation, concurrently,
+at 06:00 and 18:00 UTC.
+
+Both from one function on purpose: Vercel Hobby allows two cron jobs and caps frequency
+at one a day, so spending a job per Space would leave no margin for a missed firing.
+Two firings against a 48h timeout leaves 36h of slack even if one is skipped.
 
 ## Develop
 

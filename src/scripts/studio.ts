@@ -4,9 +4,10 @@
  * Everything else is static HTML; this hydrates the reference picker, the Nepali
  * input, the synthesis call, and the canvas plots.
  */
-import nepalify from 'nepalify';
 // Wires up the theme toggle on import; shared with the evaluation page.
 import './theme';
+import { initNepaliInput } from './nepali-input';
+import type { NepaliInput } from './nepali-input';
 import { checkHealth, estimateWithQueue, synthesize, STAGES } from './api';
 import type { JobStatus, SynthesisResult } from './api';
 import {
@@ -70,7 +71,7 @@ class Studio {
   private recorder: MediaRecorder | null = null;
   private recordTimer: number | null = null;
   private previewAudio = new Audio();
-  private interceptors = new Map<string, ReturnType<typeof nepalify.interceptElementById>>();
+  private text: NepaliInput | null = null;
   private busy = false;
 
   constructor(form: HTMLFormElement) {
@@ -218,60 +219,8 @@ class Studio {
 
   /* --- Nepali text ------------------------------------------------------- */
   private initText(): void {
-    const textarea = $<HTMLTextAreaElement>('[data-text]', this.form);
-    const count = $<HTMLElement>('[data-count]', this.form);
-    const warning = $<HTMLElement>('[data-digit-warning]', this.form);
-    const romanHint = $<HTMLElement>('[data-roman-hint]', this.form);
-    if (!textarea || !count) return;
-
-    // nepalify intercepts keypress per layout. Build both up-front and toggle.
-    for (const layout of ['romanized', 'traditional'] as const) {
-      this.interceptors.set(layout, nepalify.interceptElementById('text', { layout, enable: false }));
-    }
-
-    const setMode = (mode: string) => {
-      this.interceptors.forEach((i) => i.disable());
-      if (mode === 'romanized') this.interceptors.get('romanized')?.enable();
-      if (mode === 'preeti') this.interceptors.get('traditional')?.enable();
-      if (romanHint) romanHint.hidden = mode !== 'romanized';
-      const keyhelp = $<HTMLElement>('[data-keyhelp]', this.form);
-      if (keyhelp) keyhelp.hidden = mode !== 'preeti';
-      $$<HTMLButtonElement>('[data-mode]', this.form).forEach((b) =>
-        b.setAttribute('aria-pressed', String(b.dataset.mode === mode)),
-      );
-    };
-
-    $$<HTMLButtonElement>('[data-mode]', this.form).forEach((button) =>
-      button.addEventListener('click', () => setMode(button.dataset.mode!)),
-    );
-    setMode('romanized');
-
-    const sync = () => {
-      count.textContent = String(textarea.value.length);
-      if (warning) {
-        // Devanagari and ASCII digits alike are absent from the model's symbol set.
-        warning.hidden = !/[0-9०-९]/.test(textarea.value);
-      }
-    };
-    textarea.addEventListener('input', sync);
-
-    const keyToggle = $<HTMLButtonElement>('[data-keyboard-toggle]', this.form);
-    const keyFigure = $<HTMLElement>('#preeti-map', this.form);
-    keyToggle?.addEventListener('click', () => {
-      const open = keyFigure?.hidden ?? true;
-      if (keyFigure) keyFigure.hidden = !open;
-      keyToggle.setAttribute('aria-expanded', String(open));
-      keyToggle.textContent = open ? 'Hide the Preeti key map' : 'Show the Preeti key map';
-    });
-
-    $$<HTMLButtonElement>('[data-preset]', this.form).forEach((button) =>
-      button.addEventListener('click', () => {
-        textarea.value = button.dataset.preset!;
-        sync();
-        textarea.focus();
-      }),
-    );
-    sync();
+    // Shared with /tts; see scripts/nepali-input.ts.
+    this.text = initNepaliInput({ root: this.form, textareaId: 'text' });
   }
 
   /* --- reference resolution ---------------------------------------------- */
@@ -297,11 +246,10 @@ class Studio {
     event.preventDefault();
     if (this.busy) return;
 
-    const textarea = $<HTMLTextAreaElement>('[data-text]', this.form)!;
-    const text = textarea.value.trim();
+    const text = (this.text?.value() ?? '').trim();
     if (!text) {
       this.showError('Enter some Nepali text, or pick one of the examples.');
-      textarea.focus();
+      this.text?.focus();
       return;
     }
 

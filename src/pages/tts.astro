@@ -1,0 +1,189 @@
+---
+/**
+ * Nepali text-to-speech, one fixed female voice.
+ *
+ * The second model in the project, and a useful contrast to the cloning studio:
+ * same language, same romanised text front-end, completely different trade-off.
+ * It was its own Flask app on its own Vercel project until it was folded in here --
+ * the Flask layer rendered a single static template and nothing else.
+ */
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import TtsStudio from '../components/tts/TtsStudio.astro';
+import TtsResults from '../components/tts/TtsResults.astro';
+
+const facts = [
+  { dt: 'Voice', dd: 'One', sub: ', fixed' },
+  { dt: 'Synthesizer', dd: 'Tacotron2', sub: '' },
+  { dt: 'Vocoder', dd: 'HiFi-GAN', sub: '' },
+  { dt: 'Output rate', dd: '22.05', sub: 'kHz' },
+];
+---
+<Base
+  title="Nepali text-to-speech — Nepali Voice Cloning"
+  description="Nepali text-to-speech in a single female voice: a Tacotron2 synthesizer vocoded with HiFi-GAN at 22.05 kHz, running live on CPU."
+>
+  <SiteHeader />
+  <main id="main">
+    <section class="intro">
+      <div class="shell">
+        <p class="eyebrow">Tacotron2 &middot; HiFi-GAN &middot; one voice</p>
+        <h1>Nepali text-to-speech,<br /><em>one fixed voice.</em></h1>
+        <p class="lede">
+          The other model on this site clones whoever you give it. This one does the
+          opposite: a single female voice, baked in, reading whatever you type.
+        </p>
+
+        <div class="facts">
+          <dl>
+            {facts.map((f) => (
+              <div><dt>{f.dt}</dt><dd>{f.dd}<span>{f.sub}</span></dd></div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <TtsStudio />
+    <TtsResults />
+
+    <section class="notes">
+      <div class="shell">
+        <header class="head">
+          <p class="eyebrow">Under the hood</p>
+          <h2>How it differs.</h2>
+        </header>
+
+        <div class="grid">
+          <article>
+            <h3>It is <em>not</em> the cloning model</h3>
+            <p>
+              Different architecture, different Space, different checkpoint. Tacotron2
+              rather than Tacotron, and HiFi-GAN rather than WaveRNN. The two demos
+              share this site and a text front-end; they share no weights.
+            </p>
+          </article>
+
+          <article>
+            <h3>Genuinely single-speaker</h3>
+            <p>
+              There is no speaker embedding anywhere in this model &mdash; the decoder
+              takes the text and nothing else. The voice is a property of the
+              checkpoint, which is why there is no reference clip to choose and no way
+              to ask it for a different voice.
+            </p>
+          </article>
+
+          <article>
+            <h3>The vocoder is not the wall here</h3>
+            <p>
+              HiFi-GAN is non-autoregressive: it produces the whole waveform in one
+              pass instead of sampling 16,000 values per second in sequence. That is
+              why this answers in seconds where the cloning studio, on comparable
+              hardware, takes considerably longer for the same length of speech.
+            </p>
+          </article>
+
+          <article>
+            <h3>Romanised, like the other one</h3>
+            <p>
+              The same constraint applies: the symbol set is ASCII, <code>unidecode</code>
+              runs before the network sees anything, and digits are dropped rather than
+              spoken. The keyboards above are aids for you, not for the model.
+            </p>
+          </article>
+
+          <article>
+            <h3>The decoder does not always stop</h3>
+            <p>
+              Tacotron2 emits a stop token when it thinks the utterance is finished. When
+              that gate fails to fire it runs to its 1000-step ceiling instead, which is
+              about 11.6&nbsp;s of audio regardless of how short the input was &mdash; the
+              speech, then artefact. Watch the alignment panel: a diagonal that runs flat
+              into the right-hand edge is this happening.
+            </p>
+          </article>
+
+          <article>
+            <h3>The plots are drawn here, not there</h3>
+            <p>
+              The server sends mel and alignment as raw arrays and your browser draws
+              them, which is why they follow the theme. It used to render them as
+              matplotlib PNGs &mdash; roughly 29% of a 705&nbsp;KB response &mdash; and
+              rebuild both networks from disk on every request while it was at it.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+  <SiteFooter />
+</Base>
+
+<script>
+  import '../scripts/tts.ts';
+</script>
+
+<style>
+  .intro { padding-block: clamp(2.5rem, 6vw, 5rem) clamp(1rem, 2vw, 1.5rem); }
+  h1 { font-size: var(--step-4); max-width: 16ch; margin-block: 0.5em 0.5em; }
+  h1 em { font-style: italic; color: var(--accent); }
+  .lede { color: var(--ink-soft); max-width: 56ch; font-size: var(--step-1); line-height: 1.5; }
+
+  .facts { margin-top: clamp(2rem, 4vw, 3rem); }
+  dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 1px;
+    margin: 0;
+    background: var(--rule);
+    border-block: 1px solid var(--rule);
+  }
+  dl > div { background: var(--paper); padding: 1rem 0.2rem 1.05rem; }
+  dt {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  dd {
+    margin: 0.35rem 0 0;
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    line-height: 1;
+  }
+  dd span {
+    font-family: var(--font-sans);
+    font-size: var(--step--1);
+    color: var(--ink-faint);
+    letter-spacing: 0;
+  }
+
+  .notes { padding-block: clamp(3rem, 6vw, 5rem); background: var(--paper-sunk); }
+  .head { margin-bottom: clamp(1.8rem, 3vw, 2.6rem); }
+  h2 { font-size: var(--step-3); margin-top: 0.4em; }
+  .grid {
+    display: grid;
+    gap: clamp(1.4rem, 3vw, 2.2rem) clamp(1.8rem, 4vw, 3rem);
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  }
+  article { border-top: 1px solid var(--rule-strong); padding-top: 1rem; }
+  h3 { font-size: var(--step-1); margin-bottom: 0.55rem; }
+  h3 em { font-style: italic; color: var(--accent); }
+  .grid p { color: var(--ink-soft); font-size: var(--step--1); line-height: 1.65; }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 0.05em 0.32em;
+    border-radius: 2px;
+  }
+</style>
+
+<style is:global>
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+  main { flex: 1; }
+</style>

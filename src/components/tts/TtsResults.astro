@@ -1,0 +1,144 @@
+---
+/**
+ * TTS output.
+ *
+ * Canvases, not images: the Space returns mel and alignment as raw arrays now, so
+ * these are drawn client-side by scripts/viz.ts -- the same renderer the cloning
+ * studio uses, which means they follow the theme and stay legible in both.
+ */
+---
+<section class="results" id="results" data-tts-results hidden>
+  <div class="shell">
+    <header class="head">
+      <p class="eyebrow">Output</p>
+      <h2>What came back.</h2>
+    </header>
+
+    <p class="truncated" data-tts-truncated hidden>
+      <b>The decoder ran to its step ceiling</b> (<span data-tts-steps></span> steps)
+      without the stop token firing, so the tail of this clip is artefact rather than
+      speech. It is a quirk of the checkpoint, not of your text &mdash; you can see it
+      in the alignment plot as a diagonal that runs flat into the right-hand edge.
+    </p>
+
+    <div class="stack">
+      <figure class="audio">
+        <figcaption>
+          Synthesised audio
+          <span class="who" data-tts-meta></span>
+        </figcaption>
+        <audio controls data-tts-audio preload="metadata"></audio>
+        <p class="row">
+          <a class="dl" data-tts-download download="nepali-tts.wav" hidden>Download wav</a>
+        </p>
+      </figure>
+
+      <figure>
+        <figcaption>Mel spectrogram</figcaption>
+        <p class="note">
+          80 mel bands over time &mdash; what Tacotron2 produced and handed to the
+          vocoder, after the postnet.
+        </p>
+        <canvas data-tts-plot="mel" height="280" role="img"
+                aria-label="Mel spectrogram of the synthesised audio"></canvas>
+      </figure>
+
+      <figure>
+        <figcaption>Attention alignment</figcaption>
+        <p class="note">
+          Which character the decoder attended to at each step. A clean diagonal that
+          finishes early means the model tracked the text and stopped; one that runs
+          flat to the right-hand edge means it never found the end.
+        </p>
+        <canvas data-tts-plot="alignment" height="300" role="img"
+                aria-label="Attention alignment matrix"></canvas>
+      </figure>
+    </div>
+
+    <div class="timings">
+      <p class="eyebrow">Server timings</p>
+      <ul data-tts-timings></ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  .results { padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 6vw, 5rem); scroll-margin-top: 4rem; }
+  .head { margin-bottom: clamp(1.6rem, 3vw, 2.4rem); }
+  h2 { font-size: var(--step-3); margin-top: 0.4em; }
+
+  .truncated {
+    margin-bottom: 1.2rem;
+    padding: 0.7rem 0.9rem;
+    font-size: var(--step--1);
+    line-height: 1.6;
+    color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 9%, transparent);
+    border-left: 2px solid var(--warn);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    max-width: 72ch;
+  }
+  .truncated b { font-weight: 500; }
+
+  .stack {
+    display: grid; gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  figure { background: var(--paper); margin: 0; padding: 1.1rem 1.2rem 1.3rem; }
+  figcaption {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    margin-bottom: 0.7rem;
+    display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
+  }
+  .who { color: var(--ink-faint); font-size: 0.68rem; }
+  .note { color: var(--ink-soft); font-size: var(--step--1); margin-bottom: 0.9rem; max-width: 70ch; }
+
+  audio { width: 100%; height: 40px; display: block; }
+  .row { display: flex; margin-top: 0.7rem; }
+  .dl {
+    font-family: var(--font-mono); font-size: 0.7rem;
+    letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .dl:hover { color: var(--accent); }
+
+  canvas {
+    width: 100%;
+    display: block;
+    background: var(--viz-bg);
+    border-radius: var(--radius);
+  }
+  [data-tts-plot='mel'] { height: 280px; }
+  [data-tts-plot='alignment'] { height: 300px; }
+  @media (max-width: 52rem) {
+    [data-tts-plot='mel'] { height: 220px; }
+    [data-tts-plot='alignment'] { height: 240px; }
+  }
+
+  .timings { margin-top: 1.8rem; }
+  /* Injected via innerHTML at runtime, so Astro's scoping attribute never reaches
+     these nodes -- they must be addressed globally or they render unstyled. */
+  .timings :global(ul) {
+    list-style: none; margin: 0.7rem 0 0; padding: 0;
+    display: flex; flex-wrap: wrap; gap: 1px;
+    background: var(--rule); border: 1px solid var(--rule);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .timings :global(li) {
+    background: var(--paper); padding: 0.55rem 0.9rem; flex: 1 1 7rem;
+    font-family: var(--font-mono); font-size: 0.72rem;
+  }
+  .timings :global(li b) {
+    display: block; font-weight: 500; color: var(--ink-faint);
+    font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 0.15rem;
+  }
+  .timings :global(li span) { color: var(--ink); font-size: 0.9rem; }
+  .timings :global(li[data-total] span) { color: var(--accent); }
+</style>
