@@ -44,17 +44,18 @@
     }
     h1 em { color: #c0392b; }
 
+    /* Previews are shown at well under half size, so this is sized for that: at
+       19px it came out around 8px in a LinkedIn feed. No URL here -- every
+       platform prints the domain under the card already. */
     .foot {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-top: 44px;
+      margin-top: 40px;
       padding-top: 24px;
       border-top: 1px solid #c9c5b8;
-      font-size: 19px;
+      font-size: 27px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
       color: #6f6c62;
     }
-    .foot .what { letter-spacing: 0.14em; text-transform: uppercase; }
 
     /* The wordmark's bars, scaled up into a strip of signal down the right edge. */
     .signal {
@@ -80,10 +81,7 @@
 
     <h1>Clone a voice <em>speaking Nepali</em> from five seconds of audio.</h1>
 
-    <div class="foot">
-      <span class="what">Voice cloning &middot; Text-to-speech &middot; Listening study</span>
-      <span>nepali-voice-cloning.vercel.app</span>
-    </div>
+    <div class="foot">Voice cloning &middot; Text-to-speech &middot; Listening study</div>
   </div>
 
   <div class="signal" aria-hidden="true"></div>
