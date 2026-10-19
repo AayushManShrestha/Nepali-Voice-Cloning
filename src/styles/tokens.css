@@ -24,6 +24,9 @@
   --accent-deep:  #8f2519;
   --accent-wash:  #fbeeec;
   --accent-ring:  rgb(192 57 43 / 0.28);
+  /* Text on an accent fill. Dark flips it: white on the brighter dark-theme
+     vermilion measures ~2.8:1, under AA. */
+  --on-accent:    #ffffff;
 
   /* --- semantic ----------------------------------------------------------- */
   --ok:      #2f6f4e;
@@ -90,6 +93,7 @@
   --accent-deep:  #ff8b74;
   --accent-wash:  #26140f;
   --accent-ring:  rgb(255 106 77 / 0.32);
+  --on-accent:    #1a0d0a;
 
   --ok:      #5fbd8c;
   --warn:    #d6a44a;
@@ -128,6 +132,7 @@
     --accent-deep:  #ff8b74;
     --accent-wash:  #26140f;
     --accent-ring:  rgb(255 106 77 / 0.32);
+    --on-accent:    #1a0d0a;
 
     --ok:      #5fbd8c;
     --warn:    #d6a44a;

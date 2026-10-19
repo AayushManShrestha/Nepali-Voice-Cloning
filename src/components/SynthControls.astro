@@ -1,0 +1,77 @@
+---
+/**
+ * The Synthesise button, the progress readout and the error slot, shared by both
+ * studios. The progress hooks are the markup half of scripts/progress.ts; the
+ * button and error hooks are driven by each studio's own script.
+ *
+ *   [data-synth] [data-synth-label]                  the button
+ *   [data-progress] [data-progress-fill]             the bar, hidden while idle
+ *   [data-progress-label] [data-progress-eta]        stage and elapsed/expected
+ *   [data-error]                                     the alert
+ */
+interface Props {
+  /** Shown from submit until the server's first status frame arrives. */
+  pendingLabel: string;
+}
+const { pendingLabel } = Astro.props;
+---
+<div class="go">
+  <button class="synth" type="submit" data-synth>
+    <span data-synth-label>Synthesise</span>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+  </button>
+
+  <div class="progress" data-progress hidden aria-live="polite">
+    <div class="track"><div class="fill" data-progress-fill></div></div>
+    <p class="plabel"><span data-progress-label>{pendingLabel}</span><span class="eta" data-progress-eta></span></p>
+  </div>
+
+  <p class="error" data-error hidden role="alert"></p>
+</div>
+
+<style>
+  .go { display: grid; gap: 1rem; }
+  .synth {
+    justify-self: start;
+    display: inline-flex; align-items: center; gap: 0.7rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 0;
+    border-radius: var(--radius);
+    font-size: var(--step-0);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s var(--ease), transform 0.12s var(--ease-out-back);
+  }
+  .synth:hover:not(:disabled) { background: var(--accent-deep); }
+  .synth:active:not(:disabled) { transform: translateY(1px); }
+  .synth:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .progress { display: grid; gap: 0.5rem; max-width: 34rem; }
+  .track { height: 3px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+  .fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.35s var(--ease);
+  }
+  .plabel {
+    display: flex; justify-content: space-between; gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  .error {
+    padding: 0.7rem 0.9rem;
+    font-size: var(--step--1);
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border-left: 2px solid var(--danger);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: 0;
+  }
+</style>

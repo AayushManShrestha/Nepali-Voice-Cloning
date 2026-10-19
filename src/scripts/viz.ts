@@ -12,12 +12,17 @@ export interface Matrix {
   data: string;
 }
 
+/** Shared by both API clients for the audio, and by decodeMatrix below. */
+export function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 export function decodeMatrix(block: Matrix): { rows: number; cols: number; values: Uint8Array } {
-  const binary = atob(block.data);
-  const values = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) values[i] = binary.charCodeAt(i);
   const [rows, cols] = block.shape;
-  return { rows, cols, values };
+  return { rows, cols, values: base64ToBytes(block.data) };
 }
 
 /* --- colour ------------------------------------------------------------- */
@@ -100,6 +105,18 @@ interface AxisOpts {
   stops?: Array<[number, number, number]>;
 }
 
+/** The plot rectangle inside the axis margins, for a canvas of w x h CSS pixels. */
+function plotBox(w: number, h: number, opts: AxisOpts): Box {
+  const x = opts.yLabel ? 46 : 12;
+  const y = 10;
+  return {
+    x,
+    y,
+    w: w - x - (opts.colorbar ? 54 : 12),
+    h: h - y - (opts.xLabel ? 38 : 14),
+  };
+}
+
 /** Draw the frame, ticks, numeric labels and axis titles. Returns the plot rectangle. */
 function drawAxes(
   ctx: CanvasRenderingContext2D,
@@ -109,16 +126,7 @@ function drawAxes(
 ): Box {
   const ink = cssVar('--ink-faint') || '#888';
   const rule = cssVar('--rule-strong') || '#ccc';
-  const hasBar = !!opts.colorbar;
-
-  const box: Box = {
-    x: opts.yLabel ? 46 : 12,
-    y: 10,
-    w: 0,
-    h: 0,
-  };
-  box.w = w - box.x - (hasBar ? 54 : 12);
-  box.h = h - box.y - (opts.xLabel ? 38 : 14);
+  const box = plotBox(w, h, opts);
 
   ctx.save();
   ctx.font = monoFont(9.5);
@@ -264,6 +272,16 @@ export function drawMatrix(canvas: HTMLCanvasElement, block: Matrix, opts: Matri
 
 /* --- waveform ------------------------------------------------------------ */
 
+const WAVE_AXES: AxisOpts = { xLabel: 'Time (s)', yLabel: 'Amplitude', yMin: -1, yMax: 1 };
+
+/**
+ * Where the waveform's plot area sits inside a canvas of w x h CSS pixels. The seek
+ * handler maps clicks through this, so it cannot drift from the margins drawn here.
+ */
+export function waveformPlotBox(w: number, h: number): Box {
+  return plotBox(w, h, WAVE_AXES);
+}
+
 export function computePeaks(samples: Float32Array, buckets: number): Float32Array {
   const peaks = new Float32Array(buckets * 2);
   const stride = samples.length / buckets;
@@ -294,13 +312,7 @@ export function drawWaveform(
 
   const box = opts.axes === false
     ? { x: 0, y: 0, w, h }
-    : drawAxes(ctx, w, h, {
-        xLabel: 'Time (s)',
-        yLabel: 'Amplitude',
-        xMax: duration,
-        yMin: -1,
-        yMax: 1,
-      });
+    : drawAxes(ctx, w, h, { ...WAVE_AXES, xMax: duration });
 
   const buckets = peaks.length / 2;
   const mid = box.y + box.h / 2;
@@ -358,36 +370,10 @@ export function drawWaveform(
  * heatmap; with it off the colour alone carries the structure, which reads better
  * when comparing two embeddings side by side.
  */
-export interface EmbeddingGeometry {
-  box: Box;
-  side: number;
-  cellW: number;
-  cellH: number;
-}
-
-/** Geometry of the last embedding drawn on a canvas, for hit-testing the pointer. */
-const embeddingGeometry = new WeakMap<HTMLCanvasElement, EmbeddingGeometry>();
-
-export function embeddingCellAt(
-  canvas: HTMLCanvasElement,
-  clientX: number,
-  clientY: number,
-): { index: number; row: number; col: number } | null {
-  const g = embeddingGeometry.get(canvas);
-  if (!g) return null;
-  const rect = canvas.getBoundingClientRect();
-  const x = clientX - rect.left;
-  const y = clientY - rect.top;
-  if (x < g.box.x || x > g.box.x + g.box.w || y < g.box.y || y > g.box.y + g.box.h) return null;
-  const col = Math.min(g.side - 1, Math.floor((x - g.box.x) / g.cellW));
-  const row = Math.min(g.side - 1, Math.floor((y - g.box.y) / g.cellH));
-  return { index: row * g.side + col, row, col };
-}
-
 export function drawEmbedding(
   canvas: HTMLCanvasElement,
   embedding: number[],
-  opts: { showValues?: boolean; highlight?: number | null } = {},
+  opts: { showValues?: boolean } = {},
 ): void {
   const side = Math.round(Math.sqrt(embedding.length));
   const { ctx, w, h } = fit(canvas);
@@ -404,8 +390,6 @@ export function drawEmbedding(
   const cellW = box.w / side;
   const cellH = box.h / side;
   const peak = Math.max(...embedding.map(Math.abs)) || 1;
-
-  embeddingGeometry.set(canvas, { box, side, cellW, cellH });
 
   ctx.font = monoFont(Math.max(6, Math.min(9, cellW * 0.22, cellH * 0.5)));
   ctx.textAlign = 'center';
@@ -431,12 +415,6 @@ export function drawEmbedding(
       ctx.fillStyle = `rgb(${r} ${g} ${b})`;
       ctx.fillRect(x, y, Math.ceil(cellW), Math.ceil(cellH));
     }
-
-    if (opts.highlight === i) {
-      ctx.strokeStyle = cssVar('--accent') || '#c0392b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x + 1, y + 1, cellW - 2, cellH - 2);
-    }
   }
 }
 
@@ -459,11 +437,4 @@ export async function decodeAudio(bytes: ArrayBuffer): Promise<{
   } finally {
     void ctx.close();
   }
-}
-
-export function base64ToBytes(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
 }

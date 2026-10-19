@@ -16,6 +16,7 @@
  * `/synthesize` returned two server-rendered PNGs that were ~29% of a 705 KB response
  * and could not follow the page theme.
  */
+import { base64ToBytes } from './viz';
 import type { Matrix } from './viz';
 
 // Point at a local backend with `PUBLIC_TTS_URL=http://localhost:7860 npm run dev`.
@@ -90,13 +91,6 @@ export async function checkHealth(timeoutMs = 8000): Promise<TtsHealth | null> {
     // A sleeping Space fails here; the request itself starts waking it.
     return null;
   }
-}
-
-function base64ToBytes(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
 }
 
 function toResult(payload: TtsPayload, startedAt: number): TtsResult {

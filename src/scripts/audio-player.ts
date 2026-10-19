@@ -15,7 +15,7 @@
  *   [data-dur="X"]          total duration
  *   [data-download="X"]     <a download>, unhidden once there is something to save
  */
-import { computePeaks, decodeAudio, drawWaveform } from './viz';
+import { computePeaks, decodeAudio, drawWaveform, waveformPlotBox } from './viz';
 
 const $ = <T extends Element>(sel: string): T | null => document.querySelector<T>(sel);
 
@@ -98,7 +98,8 @@ export async function mountPlayer(
   canvas.onclick = (event) => {
     const rect = canvas.getBoundingClientRect();
     // The plot is inset by the axis margins; map the click onto the plot area.
-    const frac = (event.clientX - rect.left - 46) / (rect.width - 58);
+    const box = waveformPlotBox(rect.width, rect.height);
+    const frac = (event.clientX - rect.left - box.x) / box.w;
     audio.currentTime = Math.min(1, Math.max(0, frac)) * (audio.duration || 0);
   };
 }

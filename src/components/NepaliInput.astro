@@ -1,0 +1,159 @@
+---
+/**
+ * The Nepali text entry, shared by both studios: typing modes, the Preeti key map,
+ * the textarea, the counter, the digit warning and the example sentences.
+ *
+ * This is the markup half of scripts/nepali-input.ts. Every `data-` hook below is
+ * queried by that module, so the two files are the whole contract -- before this
+ * component existed, each studio carried its own copy of the markup and a renamed
+ * hook in either one would have broken that page silently.
+ *
+ * Renders the contents of a step, not the step itself; the studio owns the
+ * fieldset, the legend and its numbering.
+ */
+interface Props {
+  /** The textarea's DOM id. nepalify addresses elements by id, so it must be unique. */
+  id: string;
+  /** Should match the backend's own character limit. */
+  maxLength: number;
+  /** Example sentences, each with its English gloss. */
+  presets: Array<{ np: string; en: string }>;
+}
+const { id, maxLength, presets } = Astro.props;
+const mapId = `${id}-preeti-map`;
+---
+<p class="hint">
+  Type in Devanagari, or type romanised and it converts as you go.
+</p>
+
+<div class="modes" role="group" aria-label="Typing mode">
+  <button type="button" data-mode="romanized" aria-pressed="true">Romanised &rarr; नेपाली</button>
+  <button type="button" data-mode="preeti" aria-pressed="false">Preeti layout</button>
+  <button type="button" data-mode="raw" aria-pressed="false">Devanagari / paste</button>
+</div>
+
+<div class="keyhelp" data-keyhelp hidden>
+  <button type="button" data-keyboard-toggle aria-expanded="false" aria-controls={mapId}>
+    Show the Preeti key map
+  </button>
+  <figure id={mapId} data-preeti-map hidden>
+    <img src="/images/preeti-keyboard.png" width="1154" height="388" loading="lazy" decoding="async"
+         alt="Preeti keyboard layout: which Devanagari character each key on a QWERTY keyboard produces." />
+    <figcaption>Preeti maps each QWERTY key to a Devanagari glyph.</figcaption>
+  </figure>
+</div>
+
+<label class="visually-hidden" for={id}>Nepali text to synthesise</label>
+<textarea id={id} class="deva" rows="3" maxlength={maxLength}
+          placeholder="नमस्ते..." spellcheck="false"></textarea>
+
+<div class="meter">
+  <p class="hint quiet" data-roman-hint hidden>Typing <code>namaste</code> gives <span class="deva">नमस्ते</span>.</p>
+  <p class="count"><span data-count>0</span>&thinsp;/&thinsp;{maxLength}</p>
+</div>
+
+<p class="warn" data-digit-warning hidden>
+  The model&rsquo;s symbol set has no digits, so numbers are dropped rather than
+  spoken. Write them as words.
+</p>
+
+<p class="preset-label eyebrow">Or start from one of these</p>
+<ul class="presets">
+  {presets.map((p) => (
+    <li>
+      <button type="button" data-preset={p.np}>
+        <span class="deva np">{p.np}</span>
+        <span class="en">{p.en}</span>
+      </button>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .hint { color: var(--ink-soft); font-size: var(--step--1); margin-top: 0.5rem; max-width: 52ch; }
+  .hint.quiet { color: var(--ink-faint); }
+
+  .modes { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1.2rem; }
+  .modes button {
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.18s var(--ease);
+  }
+  .modes button:hover { border-color: var(--rule-strong); color: var(--ink); }
+  .modes button[aria-pressed='true'] {
+    background: var(--ink); color: var(--paper); border-color: var(--ink);
+  }
+
+  textarea {
+    width: 100%;
+    margin-top: 0.9rem;
+    padding: 0.9rem 1rem;
+    font-size: var(--step-1);
+    line-height: 1.7;
+    background: var(--paper-sunk);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    resize: vertical;
+    min-height: 5.5rem;
+  }
+  textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+
+  .keyhelp { margin-top: 0.9rem; }
+  .keyhelp button {
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--rule-strong);
+    padding: 0 0 2px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .keyhelp button:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .keyhelp figure { margin: 0.8rem 0 0; }
+  .keyhelp img {
+    width: 100%; height: auto; display: block;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: #fff;
+  }
+  .keyhelp figcaption { font-size: 0.72rem; color: var(--ink-faint); margin-top: 0.4rem; }
+
+  .meter { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 0.5rem; }
+  .meter .hint { margin: 0; }
+  .count { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint); margin: 0; flex: none; }
+  code { font-family: var(--font-mono); font-size: 0.9em; background: var(--paper-sunk); padding: 0.05em 0.3em; border-radius: 2px; }
+
+  .warn {
+    margin-top: 0.8rem;
+    padding: 0.55rem 0.8rem;
+    font-size: var(--step--1);
+    color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 9%, transparent);
+    border-left: 2px solid var(--warn);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .preset-label { margin-top: 1.6rem; }
+  .presets { list-style: none; margin: 0.7rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+  .presets button {
+    width: 100%;
+    display: flex; align-items: baseline; gap: 0.9rem; flex-wrap: wrap;
+    text-align: left;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 0.55rem 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+  }
+  .presets button:hover { border-color: var(--accent); background: var(--accent-wash); }
+  .presets .np { font-size: var(--step-0); }
+  .presets .en { font-size: 0.74rem; color: var(--ink-faint); }
+</style>

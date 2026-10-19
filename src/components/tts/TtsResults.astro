@@ -9,6 +9,8 @@
  * than three, and nothing to pair an "original" against, since there is no reference
  * audio in a text-to-speech pipeline.
  */
+import PlotZoom from '../PlotZoom.astro';
+
 const expandIcon =
   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>';
 ---
@@ -100,16 +102,7 @@ const expandIcon =
       </figure>
     </section>
 
-    <dialog class="zoom" data-zoom aria-label="Enlarged plot">
-      <div class="zoom-bar">
-        <p class="zoom-title" data-zoom-title></p>
-        <button class="zoom-close" type="button" data-zoom-close aria-label="Close enlarged view">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-      <canvas data-zoom-canvas role="img" aria-label="Enlarged plot"></canvas>
-      <p class="zoom-hint">Press <kbd>Esc</kbd> or click outside to close</p>
-    </dialog>
+    <PlotZoom />
 
     <div class="timings">
       <p class="eyebrow">Server timings</p>
@@ -209,49 +202,6 @@ const expandIcon =
     transition: border-color 0.18s var(--ease), color 0.18s var(--ease);
   }
   .expand:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* --- fullscreen plot --------------------------------------------------- */
-  .zoom {
-    width: min(96vw, 1600px);
-    height: min(92vh, 1000px);
-    padding: 0;
-    border: 1px solid var(--rule-strong);
-    border-radius: var(--radius-lg);
-    background: var(--paper);
-    color: var(--ink);
-    overflow: hidden;
-  }
-  .zoom::backdrop { background: rgb(0 0 0 / 0.62); backdrop-filter: blur(3px); }
-  .zoom[open] { display: grid; grid-template-rows: auto 1fr auto; }
-
-  .zoom-bar {
-    display: flex; align-items: center; gap: 1rem;
-    padding: 0.8rem 1rem 0.8rem 1.2rem;
-    border-bottom: 1px solid var(--rule);
-  }
-  .zoom-title {
-    font-family: var(--font-mono); font-size: 0.76rem;
-    letter-spacing: 0.04em; color: var(--ink-soft); margin: 0;
-  }
-  .zoom-close {
-    margin-left: auto;
-    display: grid; place-items: center;
-    width: 30px; height: 30px; padding: 0;
-    background: transparent; border: 1px solid var(--rule);
-    border-radius: var(--radius); color: var(--ink-soft); cursor: pointer;
-    transition: all 0.18s var(--ease);
-  }
-  .zoom-close:hover { border-color: var(--accent); color: var(--accent); }
-  .zoom canvas { width: 100%; height: 100%; border-radius: 0; }
-  .zoom-hint {
-    padding: 0.55rem 1.2rem 0.75rem;
-    font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-faint); margin: 0;
-  }
-  kbd {
-    font-family: var(--font-mono); font-size: 0.9em;
-    border: 1px solid var(--rule-strong); border-bottom-width: 2px;
-    border-radius: 3px; padding: 0.05em 0.3em;
-  }
 
   /* --- transport ---------------------------------------------------------- */
   .transport { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.7rem; }

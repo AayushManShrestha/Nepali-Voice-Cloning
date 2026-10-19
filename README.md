@@ -91,6 +91,7 @@ measurements.
 src/
   pages/        index.astro (cloning) · tts.astro (TTS) · mos.astro (study)
   components/   Hero, Pipeline, Studio, Results, Notes, header/footer
+                NepaliInput, SynthControls, PlotZoom — shared by both studios
     tts/        TtsStudio, TtsResults
     mos/        Scores, Rubric, SpeakerPanel
   data/         speakers.json      — the voice library the cloning studio offers
@@ -102,6 +103,8 @@ src/
                 audio-player.ts — waveform + transport, shared by both studios
                 plot-zoom.ts    — fullscreen plot dialog, shared by both studios
                 nepali-input.ts — romanised/Preeti entry, shared by both studios
+                progress.ts     — queue position, stage and ETA, shared by both studios
+                server-status.ts — the header's model-server indicator
                 theme.ts        — the toggle, shared by all three pages
   styles/       tokens.css — every colour, both themes
 api/warm.js     Vercel Function: cron ping for both Spaces, see below
@@ -118,10 +121,12 @@ problem again with a CDN `<script>` tag and a partly-wired writenepali.com embed
 which had drifted far enough to ship two elements with the same `id`. Merging the two
 frontends is what made one implementation possible.
 
-> **The hooks are a contract.** `[data-mode]`, `[data-count]`, `[data-digit-warning]`,
-> `[data-roman-hint]`, `[data-keyhelp]`, `[data-keyboard-toggle]`, `[data-preeti-map]`
-> and `[data-preset]` are queried by that module. Rename one in a component and it
-> silently stops working in both studios.
+Its markup lives in one place too: `components/NepaliInput.astro`. Each shared
+script has a component that renders the elements it queries by `data-` attribute —
+`NepaliInput` for `nepali-input.ts`, `SynthControls` for `progress.ts`, `PlotZoom` for
+`plot-zoom.ts` — so a renamed hook is a two-file change, not a hunt through both
+studios. The studios still own the parts that differ: the reference-voice step,
+the step numbering, and which plots exist.
 
 ### The TTS backend contract lives in one file
 
