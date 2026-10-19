@@ -7,6 +7,9 @@ interface Props {
 }
 const { title, description } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+// One preview card for the whole site; its source is og/card.html. Scrapers need an
+// absolute URL, and summary_large_image below shows nothing at all without one.
+const ogImage = new URL('/og.png', Astro.site);
 
 const FONTS =
   'https://fonts.googleapis.com/css2' +
@@ -33,7 +36,13 @@ const FONTS =
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="Nepali Voice Cloning" />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Nepali Voice Cloning: clone a voice speaking Nepali from five seconds of audio." />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImage} />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

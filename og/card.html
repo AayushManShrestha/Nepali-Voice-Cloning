@@ -1,0 +1,105 @@
+<!doctype html>
+<!--
+  Source for public/og.png, the link-preview image Slack, LinkedIn, X and iMessage
+  show for every page. Not deployed: Astro only builds src/ and public/.
+
+  Colours and type are the light theme's tokens (src/styles/tokens.css), copied in
+  because this file renders on its own. Regenerate after editing:
+
+    npx playwright screenshot --viewport-size=1200,630 --wait-for-timeout=2000 \
+      "file://$PWD/og/card.html" public/og.png
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=block" />
+  <style>
+    html, body { margin: 0; }
+    body {
+      width: 1200px; height: 630px;
+      overflow: hidden;
+      position: relative;
+      background: #fbfaf7;
+      color: #16150f;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .frame {
+      position: absolute;
+      inset: 60px 72px 56px;
+      display: flex;
+      flex-direction: column;
+    }
+    .mark { display: flex; align-items: center; gap: 16px; font-size: 24px; letter-spacing: 0.02em; }
+    .mark svg { color: #c0392b; }
+
+    h1 {
+      margin: auto 0 0;
+      max-width: 800px;
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-weight: 400;
+      font-size: 92px;
+      line-height: 1;
+      letter-spacing: -0.015em;
+    }
+    h1 em { color: #c0392b; }
+
+    .foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-top: 44px;
+      padding-top: 24px;
+      border-top: 1px solid #c9c5b8;
+      font-size: 19px;
+      color: #6f6c62;
+    }
+    .foot .what { letter-spacing: 0.14em; text-transform: uppercase; }
+
+    /* The wordmark's bars, scaled up into a strip of signal down the right edge. */
+    .signal {
+      position: absolute;
+      right: 72px; top: 150px;
+      display: flex; align-items: center; gap: 9px;
+      height: 300px;
+    }
+    .signal i { display: block; width: 7px; border-radius: 4px; background: #c0392b; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="mark">
+      <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true">
+        <g stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+          <path d="M4 16v0"/><path d="M11 10v12"/><path d="M16 5v22"/>
+          <path d="M21 12v8"/><path d="M28 16v0"/>
+        </g>
+      </svg>
+      <span>Nepali Voice Cloning</span>
+    </div>
+
+    <h1>Clone a voice <em>speaking Nepali</em> from five seconds of audio.</h1>
+
+    <div class="foot">
+      <span class="what">Voice cloning &middot; Text-to-speech &middot; Listening study</span>
+      <span>nepali-voice-cloning.vercel.app</span>
+    </div>
+  </div>
+
+  <div class="signal" aria-hidden="true"></div>
+  <script>
+    // A speech-like envelope: syllable bursts under a slow swell, fading at both ends.
+    const strip = document.querySelector('.signal');
+    const n = 15;
+    for (let i = 0; i < n; i += 1) {
+      const t = i / (n - 1);
+      const swell = Math.sin(Math.PI * t);
+      const burst = 0.55 + 0.45 * Math.abs(Math.sin(i * 1.9));
+      const bar = document.createElement('i');
+      bar.style.height = `${Math.max(14, 300 * swell * burst)}px`;
+      bar.style.opacity = String(0.35 + 0.65 * swell);
+      strip.append(bar);
+    }
+  </script>
+</body>
+</html>

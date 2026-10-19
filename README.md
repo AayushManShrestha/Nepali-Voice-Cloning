@@ -108,6 +108,7 @@ src/
                 theme.ts        — the toggle, shared by all three pages
   styles/       tokens.css — every colour, both themes
 api/warm.js     Vercel Function: cron ping for both Spaces, see below
+og/             card.html — source of public/og.png, the link-preview image
 ```
 
 ### One Nepali text input, not two
