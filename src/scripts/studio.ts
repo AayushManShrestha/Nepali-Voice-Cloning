@@ -13,6 +13,9 @@ import type { JobStatus, SynthesisResult } from './api';
 import { RAMPS, base64ToBytes, drawEmbedding, drawMatrix } from './viz';
 import { mountPlayer, mountedPlayers, paintWaveform } from './audio-player';
 import { wireZoom } from './plot-zoom';
+import { createProgress } from './progress';
+import type { Progress } from './progress';
+import { initServerStatus } from './server-status';
 
 type Source = 'library' | 'record' | 'upload';
 
@@ -21,38 +24,13 @@ const $ = <T extends Element>(sel: string, root: ParentNode = document): T | nul
 const $$ = <T extends Element>(sel: string, root: ParentNode = document): T[] =>
   Array.from(root.querySelectorAll<T>(sel));
 
-/* --------------------------------------------------------------------------
-   Backend status
-   -------------------------------------------------------------------------- */
-function initStatus(): void {
-  const dot = $<HTMLElement>('[data-backend-status] .dot');
-  const label = $<HTMLElement>('[data-backend-label]');
-  if (!dot || !label) return;
-
-  const set = (state: string, text: string) => {
-    dot.dataset.state = state;
-    label.textContent = text;
-  };
-
-  void (async () => {
-    const health = await checkHealth();
-    if (health?.models_loaded) {
-      set('ready', health.queue_depth > 0 ? `queue ${health.queue_depth}` : 'model server ready');
-      return;
-    }
-    // Either asleep or still loading. The probe above already started waking it.
-    set('waking', 'waking model server');
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      await new Promise((r) => setTimeout(r, 6000));
-      const again = await checkHealth();
-      if (again?.models_loaded) {
-        set('ready', 'model server ready');
-        return;
-      }
-    }
-    set('down', 'model server unreachable');
-  })();
-}
+const STAGE_LABELS: Record<string, string> = {
+  decoding: 'Reading the reference clip',
+  encoding: 'Extracting the speaker embedding',
+  synthesizing: 'Generating the mel spectrogram',
+  vocoding: 'Synthesising the waveform',
+  packaging: 'Packaging the result',
+};
 
 /* --------------------------------------------------------------------------
    Studio
@@ -66,10 +44,12 @@ class Studio {
   private recordTimer: number | null = null;
   private previewAudio = new Audio();
   private text: NepaliInput | null = null;
+  private progress: Progress;
   private busy = false;
 
   constructor(form: HTMLFormElement) {
     this.form = form;
+    this.progress = createProgress(form, STAGE_LABELS);
     this.initTabs();
     this.initPreviews();
     this.initRecorder();
@@ -249,18 +229,13 @@ class Studio {
 
     this.clearError();
     this.setBusy(true);
+    this.progress.start((jobsAhead) => estimateWithQueue(text.length, jobsAhead));
 
     try {
       const { bytes, label } = await this.referenceBytes();
       const base64 = btoa(
         Array.from(new Uint8Array(bytes), (b) => String.fromCharCode(b)).join(''),
       );
-
-      this.textLength = text.length;
-      this.queueAhead = 0;
-      this.queuedForMs = 0;
-      this.queuedAt = null;
-      this.tickEta(Date.now());
 
       const result = await synthesize(text, base64, (status) => this.onProgress(status), undefined, true);
       await this.render(result, bytes, label);
@@ -273,80 +248,9 @@ class Studio {
     }
   }
 
-  private etaTimer: number | null = null;
-  private queueAhead = 0;
-  private textLength = 0;
-  private queuedForMs = 0;
-  private queuedAt: number | null = null;
-
-  /**
-   * Show elapsed time against the expected duration.
-   *
-   * Two things this deliberately does NOT do: promise a countdown (the estimate is a
-   * fit, not a guarantee), and keep quoting a stale figure once it has been exceeded.
-   * Being overtaken by your own estimate and saying nothing reads as a hang.
-   */
-  private tickEta(startedAt: number): void {
-    const eta = $<HTMLElement>('[data-progress-eta]');
-    if (!eta) return;
-    if (this.etaTimer) window.clearInterval(this.etaTimer);
-
-    const render = () => {
-      const elapsed = Math.round((Date.now() - startedAt) / 1000);
-      // Recomputed every tick, so the figure tracks the queue draining ahead of you.
-      // Time already spent queued stays in the budget once we start running -- elapsed
-      // counts from submit, so dropping it would make every queued job look overdue.
-      const budget =
-        Math.round(this.queuedForMs / 1000) +
-        estimateWithQueue(this.textLength, this.queueAhead);
-      if (elapsed > budget * 1.25) {
-        eta.textContent = `${elapsed}s elapsed · longer than usual`;
-      } else {
-        eta.textContent = `${elapsed}s elapsed · ~${budget}s expected`;
-      }
-    };
-    render();
-    this.etaTimer = window.setInterval(render, 500);
-  }
-
   private onProgress(status: JobStatus): void {
-    const fill = $<HTMLElement>('[data-progress-fill]');
-    const label = $<HTMLElement>('[data-progress-label]');
-
-    if (status.status === 'queued') {
-      // The server's queue_position counts only *waiting* jobs, not the one currently
-      // running. But being queued at all means something is ahead of us -- otherwise we
-      // would be running. So position N means N jobs to get through, not N-1.
-      this.queueAhead = Math.max(1, status.queue_position ?? 1);
-      if (label) {
-        label.textContent =
-          this.queueAhead === 1
-            ? 'Queued — one job ahead of you'
-            : `Queued — ${this.queueAhead} jobs ahead of you`;
-      }
-      if (fill) fill.style.width = '4%';
-      this.queuedAt ??= Date.now();
-      return;
-    }
-    // First non-queued update: bank however long we actually waited.
-    if (this.queuedAt !== null) {
-      this.queuedForMs = Date.now() - this.queuedAt;
-      this.queuedAt = null;
-    }
-    this.queueAhead = 0;
-
-    if (fill) fill.style.width = `${Math.max(4, status.progress * 100).toFixed(1)}%`;
-    if (label && status.stage) {
-      const pretty: Record<string, string> = {
-        decoding: 'Reading the reference clip',
-        encoding: 'Extracting the speaker embedding',
-        synthesizing: 'Generating the mel spectrogram',
-        vocoding: 'Synthesising the waveform',
-        packaging: 'Packaging the result',
-      };
-      label.textContent = pretty[status.stage] ?? status.stage;
-    }
-    this.lightPipeline(status.stage);
+    this.progress.update(status);
+    if (status.status !== 'queued') this.lightPipeline(status.stage);
   }
 
   /** Mirror the backend's stage onto the architecture diagram. */
@@ -375,10 +279,7 @@ class Studio {
     if (button) button.disabled = busy;
     if (label) label.textContent = busy ? 'Synthesising…' : 'Synthesise';
     if (progress) progress.hidden = !busy;
-    if (!busy && this.etaTimer) {
-      window.clearInterval(this.etaTimer);
-      this.etaTimer = null;
-    }
+    if (!busy) this.progress.stop();
   }
 
   private showError(message: string): void {
@@ -562,7 +463,7 @@ function renderTimings(timings: Record<string, number>): void {
 /* --------------------------------------------------------------------------
    Boot
    -------------------------------------------------------------------------- */
-initStatus();
+initServerStatus(checkHealth);
 
 const form = $<HTMLFormElement>('[data-studio]');
 if (form) new Studio(form);

@@ -19,11 +19,14 @@
 import './theme';
 import { initNepaliInput } from './nepali-input';
 import type { NepaliInput } from './nepali-input';
-import { estimateWithQueue, synthesize } from './tts-api';
-import type { TtsJobStatus, TtsResult } from './tts-api';
+import { checkHealth, estimateWithQueue, synthesize } from './tts-api';
+import type { TtsResult } from './tts-api';
 import { RAMPS, drawMatrix } from './viz';
 import { mountPlayer, paintWaveform } from './audio-player';
 import { wireZoom } from './plot-zoom';
+import { createProgress } from './progress';
+import type { Progress } from './progress';
+import { initServerStatus } from './server-status';
 
 const $ = <T extends Element>(sel: string, root: ParentNode = document): T | null =>
   root.querySelector<T>(sel);
@@ -40,14 +43,13 @@ let latest: TtsResult | null = null;
 class Tts {
   private form: HTMLFormElement;
   private text: NepaliInput | null;
+  private progress: Progress;
   private busy = false;
-  private etaTimer: number | null = null;
-  private queueAhead = 0;
-  private textLength = 0;
 
   constructor(form: HTMLFormElement) {
     this.form = form;
     this.text = initNepaliInput({ root: form, textareaId: 'tts-text' });
+    this.progress = createProgress(form, STAGE_LABELS);
     form.addEventListener('submit', (event) => void this.onSubmit(event));
   }
 
@@ -64,65 +66,16 @@ class Tts {
 
     this.clearError();
     this.setBusy(true);
-    this.textLength = text.length;
-    this.queueAhead = 0;
-    this.tickEta(Date.now());
+    this.progress.start((jobsAhead) => estimateWithQueue(text.length, jobsAhead));
 
     try {
-      const result = await synthesize(text, (status) => this.onProgress(status));
+      const result = await synthesize(text, (status) => this.progress.update(status));
       await this.render(result);
     } catch (error) {
       this.showError(error instanceof Error ? error.message : String(error));
     } finally {
       this.setBusy(false);
     }
-  }
-
-  private onProgress(status: TtsJobStatus): void {
-    const fill = $<HTMLElement>('[data-progress-fill]', this.form);
-    const label = $<HTMLElement>('[data-progress-label]', this.form);
-
-    if (status.status === 'queued') {
-      // queue_position counts only waiting jobs, not the running one -- so position N
-      // means N jobs to get through, not N-1.
-      this.queueAhead = Math.max(1, status.queue_position ?? 1);
-      if (label) {
-        label.textContent =
-          this.queueAhead === 1
-            ? 'Queued — one job ahead of you'
-            : `Queued — ${this.queueAhead} jobs ahead of you`;
-      }
-      if (fill) fill.style.width = '4%';
-      return;
-    }
-
-    this.queueAhead = 0;
-    if (fill) fill.style.width = `${Math.max(4, status.progress * 100).toFixed(1)}%`;
-    if (label && status.stage) {
-      label.textContent = STAGE_LABELS[status.stage] ?? status.stage;
-    }
-  }
-
-  /**
-   * Elapsed against expected. Same rule as the cloning studio: never promise a
-   * countdown, and stop quoting a figure once it has been overtaken -- being past
-   * your own estimate and saying nothing reads as a hang.
-   */
-  private tickEta(startedAt: number): void {
-    const eta = $<HTMLElement>('[data-progress-eta]', this.form);
-    if (!eta) return;
-    if (this.etaTimer) window.clearInterval(this.etaTimer);
-
-    const render = () => {
-      const elapsed = Math.round((Date.now() - startedAt) / 1000);
-      const budget = estimateWithQueue(this.textLength, this.queueAhead);
-      eta.textContent =
-        elapsed > budget * 1.25
-          ? `${elapsed}s elapsed · longer than usual`
-          : `${elapsed}s elapsed · ~${budget}s expected`;
-    };
-    render();
-    this.etaTimer = window.setInterval(render, 500);
   }
 
   private setBusy(busy: boolean): void {
@@ -133,10 +86,7 @@ class Tts {
     if (button) button.disabled = busy;
     if (label) label.textContent = busy ? 'Synthesising…' : 'Synthesise';
     if (progress) progress.hidden = !busy;
-    if (!busy && this.etaTimer) {
-      window.clearInterval(this.etaTimer);
-      this.etaTimer = null;
-    }
+    if (!busy) this.progress.stop();
   }
 
   private showError(message: string): void {
@@ -240,6 +190,8 @@ function renderTimings(timings: Record<string, number>): void {
     )
     .join('');
 }
+
+initServerStatus(checkHealth);
 
 const form = $<HTMLFormElement>('[data-tts]');
 if (form) new Tts(form);
