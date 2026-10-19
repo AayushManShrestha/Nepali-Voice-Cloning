@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "dev:mock": "ASTRO_TELEMETRY_DISABLED=1 node dev/mock-space.mjs",
     "build": "ASTRO_TELEMETRY_DISABLED=1 astro check && ASTRO_TELEMETRY_DISABLED=1 astro build",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "check": "ASTRO_TELEMETRY_DISABLED=1 astro check"

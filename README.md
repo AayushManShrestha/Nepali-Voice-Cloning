@@ -108,6 +108,7 @@ src/
                 theme.ts        — the toggle, shared by all three pages
   styles/       tokens.css — every colour, both themes
 api/warm.js     Vercel Function: cron ping for both Spaces, see below
+dev/            mock-space.mjs — a stand-in for both Spaces, see Develop
 og/             card.html — source of public/og.png, the link-preview image
 ```
 
@@ -172,10 +173,18 @@ silently fell back to the project default (Node 18) until this was pinned.
 
 ```bash
 npm install
-npm run dev      # http://localhost:4321
-npm run build    # astro check && astro build
+npm run dev       # http://localhost:4321, against the live Spaces
+npm run dev:mock  # http://localhost:4321, against a local mock of both
+npm run build     # astro check && astro build
 npm run preview
 ```
+
+`dev:mock` is the one to reach for when working on the site itself. It runs
+`dev/mock-space.mjs`, which speaks both Spaces' job protocol — enqueue, SSE stages,
+polling fallback, `/health` — with synthetic payloads, and points `astro dev` at it.
+No Docker, no weights, and no waking the real Spaces or queueing behind real
+visitors. It can also hold a job in the queue on demand, which is otherwise hard to
+see; the header comment has the two `curl`s.
 
 Deploys automatically from `main`.
 
