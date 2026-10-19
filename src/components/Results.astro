@@ -169,6 +169,7 @@ import PlotZoom from './PlotZoom.astro';
   }
   @media (min-width: 46rem) {
     .stage-head { grid-template-columns: auto 1fr auto; align-items: center; }
+    .stage-head .switch { grid-column: auto; }
   }
   .stage-n {
     font-family: var(--font-mono);
@@ -183,7 +184,12 @@ import PlotZoom from './PlotZoom.astro';
   .stage-head h3 { font-size: var(--step-2); }
   .stage-head p { color: var(--ink-soft); font-size: var(--step--1); margin-top: 0.3rem; max-width: 62ch; }
 
+  /* Below 46rem the head is two columns, and a nowrap switch auto-placed into the
+     first one widened it to its own width -- squeezing the title and description
+     into whatever was left. On narrow screens it gets its own row instead. */
   .switch {
+    grid-column: 1 / -1;
+    justify-self: start;
     display: inline-flex; align-items: center; gap: 0.5rem;
     font-family: var(--font-mono); font-size: 0.72rem;
     color: var(--ink-soft); cursor: pointer;
@@ -210,7 +216,7 @@ import PlotZoom from './PlotZoom.astro';
     display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
   }
   figcaption.cloned { color: var(--accent); }
-  .who { color: var(--ink-faint); font-size: 0.68rem; }
+  .who { color: var(--ink-faint); font-size: 0.7rem; }
 
   canvas {
     width: 100%;
@@ -246,8 +252,12 @@ import PlotZoom from './PlotZoom.astro';
     color: var(--ink-faint);
     cursor: pointer;
     flex: none;
+    position: relative;
     transition: border-color 0.18s var(--ease), color 0.18s var(--ease);
   }
+  /* The box stays 22px to sit quietly in the caption; this widens what a finger
+     can hit to 34px, past WCAG 2.2's 24px minimum. */
+  .expand::before { content: ''; position: absolute; inset: -6px; }
   .expand:hover { border-color: var(--accent); color: var(--accent); }
 
   .cosine {
@@ -258,7 +268,7 @@ import PlotZoom from './PlotZoom.astro';
     border-radius: var(--radius-lg);
   }
   .cos-label {
-    font-family: var(--font-mono); font-size: 0.66rem;
+    font-family: var(--font-mono); font-size: 0.7rem;
     letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
   }
   .cos-formula {
@@ -290,6 +300,8 @@ import PlotZoom from './PlotZoom.astro';
   .transport button[data-playing] .i-pause { display: block; }
   .time { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-faint); margin: 0; }
   .dl {
+    /* Padding rather than a bigger font: an 18px-tall link is a hard tap target. */
+    padding-block: 0.45rem;
     margin-left: auto; font-family: var(--font-mono); font-size: 0.7rem;
     letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint);
   }
@@ -309,7 +321,7 @@ import PlotZoom from './PlotZoom.astro';
   }
   .timings :global(li b) {
     display: block; font-weight: 500; color: var(--ink-faint);
-    font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase;
+    font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
     margin-bottom: 0.15rem;
   }
   .timings :global(li span) { color: var(--ink); font-size: 0.9rem; }

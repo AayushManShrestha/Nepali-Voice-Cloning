@@ -12,7 +12,11 @@
     </button>
   </div>
   <canvas data-zoom-canvas role="img" aria-label="Enlarged plot"></canvas>
-  <p class="zoom-hint">Press <kbd>Esc</kbd> or click outside to close</p>
+  <p class="zoom-hint">
+    <span class="for-keys">Press <kbd>Esc</kbd> or click outside to close</span>
+    <span class="for-touch">Tap outside or &times; to close<span class="for-portrait">
+      &middot; turn your phone sideways for a wider plot</span></span>
+  </p>
 </dialog>
 
 <style>
@@ -54,7 +58,17 @@
   }
   .zoom-hint {
     padding: 0.55rem 1.2rem 0.75rem;
-    font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-faint); margin: 0;
+    font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint); margin: 0;
+  }
+  /* There is no Esc key on a phone, and in portrait "full screen" makes the plot
+     taller rather than wider -- which is the wrong way for a spectrogram. */
+  .for-touch, .for-portrait { display: none; }
+  @media (pointer: coarse) {
+    .for-keys { display: none; }
+    .for-touch { display: inline; }
+  }
+  @media (pointer: coarse) and (orientation: portrait) {
+    .for-portrait { display: inline; }
   }
   kbd {
     font-family: var(--font-mono); font-size: 0.9em;

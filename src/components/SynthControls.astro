@@ -9,11 +9,10 @@
  *   [data-progress-label] [data-progress-eta]        stage and elapsed/expected
  *   [data-error]                                     the alert
  */
-interface Props {
-  /** Shown from submit until the server's first status frame arrives. */
-  pendingLabel: string;
-}
-const { pendingLabel } = Astro.props;
+// "Starting" is shown from submit until the server's first status frame arrives
+// (or a waking notice, if the header knows the Space is asleep -- see progress.ts).
+// Both studios used to say something more specific here, "Queued" and
+// "Synthesising", and both were wrong for most of that window.
 ---
 <div class="go">
   <button class="synth" type="submit" data-synth>
@@ -21,9 +20,11 @@ const { pendingLabel } = Astro.props;
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
   </button>
 
-  <div class="progress" data-progress hidden aria-live="polite">
+  <!-- Only the label is live. The ETA re-renders every 500ms, and inside a live
+       region a screen reader would read "3s elapsed..." out loud on every tick. -->
+  <div class="progress" data-progress hidden>
     <div class="track"><div class="fill" data-progress-fill></div></div>
-    <p class="plabel"><span data-progress-label>{pendingLabel}</span><span class="eta" data-progress-eta></span></p>
+    <p class="plabel"><span data-progress-label role="status">Starting</span><span class="eta" data-progress-eta></span></p>
   </div>
 
   <p class="error" data-error hidden role="alert"></p>

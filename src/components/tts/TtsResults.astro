@@ -169,7 +169,7 @@ const expandIcon =
     margin-bottom: 0.7rem;
     display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
   }
-  .who { color: var(--ink-faint); font-size: 0.68rem; }
+  .who { color: var(--ink-faint); font-size: 0.7rem; }
 
   .full {
     border: 1px solid var(--rule);
@@ -199,8 +199,12 @@ const expandIcon =
     color: var(--ink-faint);
     cursor: pointer;
     flex: none;
+    position: relative;
     transition: border-color 0.18s var(--ease), color 0.18s var(--ease);
   }
+  /* The box stays 22px to sit quietly in the caption; this widens what a finger
+     can hit to 34px, past WCAG 2.2's 24px minimum. */
+  .expand::before { content: ''; position: absolute; inset: -6px; }
   .expand:hover { border-color: var(--accent); color: var(--accent); }
 
   /* --- transport ---------------------------------------------------------- */
@@ -218,6 +222,8 @@ const expandIcon =
   .transport button[data-playing] .i-pause { display: block; }
   .time { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-faint); margin: 0; }
   .dl {
+    /* Padding rather than a bigger font: an 18px-tall link is a hard tap target. */
+    padding-block: 0.45rem;
     margin-left: auto; font-family: var(--font-mono); font-size: 0.7rem;
     letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint);
   }
@@ -240,7 +246,7 @@ const expandIcon =
   }
   .timings :global(li b) {
     display: block; font-weight: 500; color: var(--ink-faint);
-    font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase;
+    font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
     margin-bottom: 0.15rem;
   }
   .timings :global(li span) { color: var(--ink); font-size: 0.9rem; }

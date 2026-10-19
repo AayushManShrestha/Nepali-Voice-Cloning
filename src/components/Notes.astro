@@ -13,7 +13,7 @@
         <p>
           The synthesizer&rsquo;s vocabulary is 68 ASCII symbols &mdash; the stock Tacotron
           set. Devanagari never reaches the network: the text front-end runs
-          <code>unidecode</code> first, so <span class="deva">नमस्ते</span> becomes
+          <code>unidecode</code> first, so <span class="deva" lang="ne">नमस्ते</span> becomes
           <code>namaste</code> before embedding lookup. The Preeti and romanised keyboards
           above are typing aids for the human, not the model.
         </p>
@@ -23,7 +23,7 @@
         <h3>Numbers get dropped</h3>
         <p>
           Digits aren&rsquo;t in those 68 symbols and nothing expands them, so
-          <span class="deva">२०२४</span> transliterates to <code>2024</code> and then
+          <span class="deva" lang="ne">२०२४</span> transliterates to <code>2024</code> and then
           vanishes character by character. The studio warns you rather than letting it
           fail silently. Proper Nepali numeral expansion is genuinely hard &mdash; the
           words above twenty are irregular &mdash; so it is listed as future work rather

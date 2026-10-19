@@ -10,12 +10,22 @@ export interface HealthLike {
   queue_depth: number;
 }
 
+export type ServerState = 'probing' | 'ready' | 'waking' | 'down';
+
+let current: ServerState = 'probing';
+
+/** What the indicator last showed. progress.ts reads it to explain a slow start. */
+export function serverState(): ServerState {
+  return current;
+}
+
 export function initServerStatus(check: () => Promise<HealthLike | null>): void {
   const dot = document.querySelector<HTMLElement>('[data-backend-status] .dot');
   const label = document.querySelector<HTMLElement>('[data-backend-label]');
   if (!dot || !label) return;
 
-  const set = (state: string, text: string) => {
+  const set = (state: ServerState, text: string) => {
+    current = state;
     dot.dataset.state = state;
     label.textContent = text;
   };

@@ -27,7 +27,7 @@ const mapId = `${id}-preeti-map`;
 </p>
 
 <div class="modes" role="group" aria-label="Typing mode">
-  <button type="button" data-mode="romanized" aria-pressed="true">Romanised &rarr; नेपाली</button>
+  <button type="button" data-mode="romanized" aria-pressed="true">Romanised &rarr; <span lang="ne">नेपाली</span></button>
   <button type="button" data-mode="preeti" aria-pressed="false">Preeti layout</button>
   <button type="button" data-mode="raw" aria-pressed="false">Devanagari / paste</button>
 </div>
@@ -44,11 +44,11 @@ const mapId = `${id}-preeti-map`;
 </div>
 
 <label class="visually-hidden" for={id}>Nepali text to synthesise</label>
-<textarea id={id} class="deva" rows="3" maxlength={maxLength}
+<textarea id={id} class="deva" lang="ne" rows="3" maxlength={maxLength}
           placeholder="नमस्ते..." spellcheck="false"></textarea>
 
 <div class="meter">
-  <p class="hint quiet" data-roman-hint hidden>Typing <code>namaste</code> gives <span class="deva">नमस्ते</span>.</p>
+  <p class="hint quiet" data-roman-hint hidden>Typing <code>namaste</code> gives <span class="deva" lang="ne">नमस्ते</span>.</p>
   <p class="count"><span data-count>0</span>&thinsp;/&thinsp;{maxLength}</p>
 </div>
 
@@ -62,7 +62,7 @@ const mapId = `${id}-preeti-map`;
   {presets.map((p) => (
     <li>
       <button type="button" data-preset={p.np}>
-        <span class="deva np">{p.np}</span>
+        <span class="deva np" lang="ne">{p.np}</span>
         <span class="en">{p.en}</span>
       </button>
     </li>

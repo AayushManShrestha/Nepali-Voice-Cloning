@@ -148,8 +148,24 @@ const links = [
     .status { display: none; }
   }
   /* Below this the wordmark, the nav and the toggle stop fitting on one line.
-     The mark alone still identifies the site and still links home. */
+     The mark alone still identifies the site and still links home. The name is
+     hidden visually rather than with display:none, which would leave the link
+     with no accessible name at all -- the icon is aria-hidden. */
   @media (max-width: 26rem) {
-    .wordmark span { display: none; }
+    .wordmark span {
+      position: absolute;
+      width: 1px; height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    /* With the text gone the link is just the 22px icon; pad it to a fingertip. */
+    .wordmark { min-width: 2rem; min-height: 2rem; justify-content: center; }
+  }
+  /* At 320px the row was still 9px too wide, which made phones lay the whole page
+     out at 329px and zoom it out to fit. */
+  @media (max-width: 22.5rem) {
+    .bar { gap: 0.5rem; }
+    .nav a { padding-inline: 0.5rem; }
   }
 </style>

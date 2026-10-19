@@ -14,6 +14,15 @@
  *   [data-progress-eta]    elapsed against expected
  */
 
+import { serverState } from './server-status';
+
+/**
+ * Until the server accepts the job there is no queue position or stage to show,
+ * and a sleeping Space can take minutes to accept it. When the header already
+ * knows the server is waking, say so rather than implying a queue that isn't there.
+ */
+const WAKING_LABEL = 'Waking the model server — can take a few minutes';
+
 export interface ProgressStatus {
   status: 'queued' | 'running' | 'done' | 'error';
   stage: string | null;
@@ -85,7 +94,7 @@ export function createProgress(
       // Without this the previous run's full bar and last stage linger until the
       // first frame of the new one arrives.
       if (fill) fill.style.width = '0%';
-      if (label) label.textContent = pendingLabel;
+      if (label) label.textContent = serverState() === 'waking' ? WAKING_LABEL : pendingLabel;
       render();
       timer = window.setInterval(render, 500);
     },

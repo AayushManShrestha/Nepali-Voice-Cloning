@@ -112,6 +112,9 @@ const distMax = hasData
       <!-- table view, so nothing is encoded in colour alone -->
       <details class="table-view">
         <summary>View as a table</summary>
+        <!-- Focusable so keyboard users can scroll it on the narrowest phones,
+             where five columns can still not quite fit. -->
+        <div class="table-scroll" role="region" aria-label="Scores table" tabindex="0">
         <table>
           <caption>Mean opinion scores by speaker, 1&ndash;5 scale, n&nbsp;=&nbsp;{scores.raters} raters.</caption>
           <thead>
@@ -142,6 +145,7 @@ const distMax = hasData
             </tr>
           </tbody>
         </table>
+        </div>
       </details>
 
       <p class="provenance">
@@ -194,7 +198,7 @@ const distMax = hasData
     line-height: 1; margin-top: 0.4rem;
   }
   .of { font-family: var(--font-sans); font-size: var(--step-0); color: var(--ink-faint); margin-left: 0.35rem; }
-  .mci { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-faint); margin-top: 0.5rem; }
+  .mci { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint); margin-top: 0.5rem; }
   .mgloss { font-size: var(--step--1); color: var(--ink-soft); margin-top: 0.4rem; }
 
   /* --- charts ------------------------------------------------------------ */
@@ -221,14 +225,14 @@ const distMax = hasData
   }
   .fill.quality { background: var(--series-quality); }
   .fill.similarity { background: var(--series-similarity); }
-  .val { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-soft); }
+  .val { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-soft); }
 
   .scale-ticks {
     display: grid; grid-template-columns: repeat(6, 1fr);
     margin-left: 6.3rem; margin-top: 0.4rem;
     border-top: 1px solid var(--rule);
     padding-top: 0.3rem;
-    font-family: var(--font-mono); font-size: 0.64rem; color: var(--ink-faint);
+    font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint);
   }
   .scale-ticks span:not(:first-child) { text-align: center; }
   .scale-ticks span:first-child { text-align: left; }
@@ -238,7 +242,7 @@ const distMax = hasData
   .bucket { display: grid; grid-template-rows: 1fr auto; gap: 0.5rem; }
   .cols { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; }
   .col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; flex: 1; max-width: 3rem; }
-  .count { font-family: var(--font-mono); font-size: 0.64rem; color: var(--ink-faint); margin-bottom: 0.25rem; }
+  .count { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint); margin-bottom: 0.25rem; }
   .stalk { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; }
   .stalk.quality { background: var(--series-quality); }
   .stalk.similarity { background: var(--series-similarity); }
@@ -246,7 +250,7 @@ const distMax = hasData
     text-align: center; font-family: var(--font-mono); font-size: 0.72rem;
     color: var(--ink-soft); border-top: 1px solid var(--rule); padding-top: 0.35rem;
   }
-  .axis-note { font-family: var(--font-mono); font-size: 0.64rem; color: var(--ink-faint); margin-top: 0.4rem; }
+  .axis-note { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint); margin-top: 0.4rem; }
 
   /* --- table ------------------------------------------------------------- */
   .table-view { margin-top: 2rem; }
@@ -255,16 +259,20 @@ const distMax = hasData
     cursor: pointer; padding: 0.4rem 0;
   }
   summary:hover { color: var(--accent); }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; font-size: var(--step--1); }
+  .table-scroll { overflow-x: auto; margin-top: 0.8rem; }
+  table { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
   caption { text-align: left; color: var(--ink-faint); font-size: 0.72rem; padding-bottom: 0.6rem; }
   th, td { text-align: left; padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--rule); }
   thead th {
-    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 400;
+    font-family: var(--font-mono); font-size: 0.7rem; font-weight: 400;
     text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint);
   }
   .r { text-align: right; font-family: var(--font-mono); }
   .dim { color: var(--ink-faint); }
   .total th, .total td { border-top: 1px solid var(--rule-strong); font-weight: 500; }
+  @media (max-width: 26rem) {
+    th, td { padding-inline: 0.4rem; }
+  }
 
   .provenance { margin-top: 1.6rem; font-size: var(--step--1); color: var(--ink-faint); max-width: 62ch; }
 </style>

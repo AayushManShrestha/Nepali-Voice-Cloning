@@ -8,7 +8,7 @@
  * Markup contract, per `which` key:
  *
  *   [data-audio="X"]        <audio>, the actual element that plays
- *   [data-wave="X"]         <canvas>, the waveform
+ *   [data-wave="X"]         <canvas>, the waveform; also the seek slider once mounted
  *   [data-play="X"]         play/pause button; gets [data-playing] while playing
  *   [data-player-name="X"]  subtitle slot (duration, rate, …)
  *   [data-time="X"]         current time
@@ -88,8 +88,37 @@ export async function mountPlayer(
     play.removeAttribute('data-playing');
     drawWaveform(canvas, peaks, { duration });
   };
+  // Clicking seeks, but that is a pointer-only path. The canvas doubles as a
+  // slider so the keyboard can do the same: arrows step half a second, Home and
+  // End jump to either end.
+  canvas.tabIndex = 0;
+  canvas.setAttribute('role', 'slider');
+  canvas.setAttribute('aria-valuemin', '0');
+  canvas.setAttribute('aria-valuemax', duration.toFixed(1));
+  const syncSlider = () => {
+    canvas.setAttribute('aria-valuenow', audio.currentTime.toFixed(1));
+    canvas.setAttribute(
+      'aria-valuetext',
+      `${formatTime(audio.currentTime)} of ${formatTime(duration)}`,
+    );
+  };
+  syncSlider();
+  canvas.onkeydown = (event) => {
+    const step: Record<string, number> = {
+      ArrowLeft: -0.5, ArrowDown: -0.5, ArrowRight: 0.5, ArrowUp: 0.5,
+    };
+    let to: number;
+    if (event.key in step) to = audio.currentTime + step[event.key];
+    else if (event.key === 'Home') to = 0;
+    else if (event.key === 'End') to = duration;
+    else return;
+    event.preventDefault();
+    audio.currentTime = Math.min(duration, Math.max(0, to));
+  };
+
   audio.ontimeupdate = () => {
     if (time) time.textContent = formatTime(audio.currentTime);
+    syncSlider();
     drawWaveform(canvas, peaks, {
       duration,
       playhead: audio.currentTime / (audio.duration || 1),

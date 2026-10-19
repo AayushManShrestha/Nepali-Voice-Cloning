@@ -108,8 +108,14 @@ class Studio {
     const button = $<HTMLButtonElement>('[data-record]', this.form);
     const label = $<HTMLElement>('[data-record-label]', this.form);
     const timer = $<HTMLElement>('[data-record-timer]', this.form);
+    const status = $<HTMLElement>('[data-record-status]', this.form);
     const player = $<HTMLAudioElement>('[data-recorded-player]', this.form);
     if (!button || !label || !timer || !player) return;
+
+    let elapsed = 0;
+    const announce = (text: string) => {
+      if (status) status.textContent = text;
+    };
 
     const stop = () => {
       if (this.recorder?.state === 'recording') this.recorder.stop();
@@ -119,6 +125,7 @@ class Studio {
       }
       button.removeAttribute('data-active');
       label.textContent = 'Record again';
+      announce(`Recorded ${elapsed.toFixed(1)} seconds.`);
     };
 
     button.addEventListener('click', async () => {
@@ -141,7 +148,8 @@ class Studio {
 
         button.setAttribute('data-active', '');
         label.textContent = 'Stop';
-        let elapsed = 0;
+        announce('Recording. Stops by itself after 10 seconds.');
+        elapsed = 0;
         timer.textContent = '0.0s';
         this.recordTimer = window.setInterval(() => {
           elapsed += 0.1;

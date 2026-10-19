@@ -59,7 +59,10 @@ const presets = [
               <span class="bulb" aria-hidden="true"></span>
               <span data-record-label>Start recording</span>
             </button>
-            <p class="timer" data-record-timer aria-live="polite">Up to 10 seconds</p>
+            <!-- The timer ticks every 100ms, so it is not live; the status line
+                 below announces only the start and the end of a recording. -->
+            <p class="timer" data-record-timer>Up to 10 seconds</p>
+            <p class="visually-hidden" data-record-status role="status"></p>
           </div>
           <audio controls data-recorded-player hidden></audio>
           <p class="hint quiet">Needs microphone permission. Audio never leaves your browser except as the reference clip.</p>
@@ -83,7 +86,7 @@ const presets = [
 
       <!-- ---------------------------------------------------------------- 03 -->
       <div class="step">
-        <SynthControls pendingLabel="Queued" />
+        <SynthControls />
       </div>
     </form>
   </div>
@@ -176,7 +179,7 @@ const presets = [
   }
   .vnums {
     font-family: var(--font-mono);
-    font-size: 0.66rem;
+    font-size: 0.7rem;
     color: var(--ink-faint);
     display: flex; align-items: center; gap: 0.45rem;
     margin-top: 0.15rem;
@@ -205,6 +208,17 @@ const presets = [
   }
   .preview:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
   .preview[data-playing] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+
+  /* On a phone the single column stacked ten cards into ~1000px between the
+     reader and the text box. Two compact columns roughly halve that; the play
+     button moves to the corner so the name can use the card's full width. */
+  @media (max-width: 34rem) {
+    .voices { grid-template-columns: 1fr 1fr; gap: 0.45rem; }
+    .voice { padding: 0.6rem 0.6rem 0.65rem 0.65rem; align-items: start; }
+    .vname { font-size: var(--step--1); padding-right: 1.9rem; }
+    .vnums { flex-wrap: wrap; row-gap: 0.2rem; }
+    .preview { top: 0.45rem; right: 0.45rem; translate: none; width: 26px; height: 26px; }
+  }
 
   /* --- recorder ----------------------------------------------------------- */
   .recorder { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
