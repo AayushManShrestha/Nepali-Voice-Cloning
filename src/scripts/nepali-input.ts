@@ -12,13 +12,14 @@
  * rather than spoken. The warning belongs here for the same reason the input does.
  */
 import nepalify from 'nepalify';
+import { attachRomanIme } from './roman-ime';
 
 export type Mode = 'romanized' | 'preeti' | 'raw';
 
 export interface NepaliInputOptions {
   /** Scope for every query; lets two instances coexist on one page. */
   root: ParentNode;
-  /** The textarea's DOM id. nepalify addresses elements by id, not by node. */
+  /** The textarea's DOM id. nepalify (the Preeti layout) addresses elements by id, not by node. */
   textareaId: string;
   /** Called after any change to the text, with the current value. */
   onChange?: (value: string) => void;
@@ -43,17 +44,7 @@ export function initNepaliInput(options: NepaliInputOptions): NepaliInput | null
 
   const count = $<HTMLElement>('[data-count]');
   const warning = $<HTMLElement>('[data-digit-warning]');
-  const romanHint = $<HTMLElement>('[data-roman-hint]');
   const keyhelp = $<HTMLElement>('[data-keyhelp]');
-
-  // nepalify intercepts keypress per layout. Build both up-front and toggle, rather
-  // than tearing one down and building the other on every switch.
-  const interceptors = new Map<string, ReturnType<typeof nepalify.interceptElementById>>();
-  for (const layout of ['romanized', 'traditional'] as const) {
-    interceptors.set(layout, nepalify.interceptElementById(textareaId, { layout, enable: false }));
-  }
-
-  let current: Mode = 'romanized';
 
   const sync = () => {
     if (count) count.textContent = String(textarea.value.length);
@@ -62,12 +53,22 @@ export function initNepaliInput(options: NepaliInputOptions): NepaliInput | null
     onChange?.(textarea.value);
   };
 
+  // Preeti is a fixed key-to-glyph layout, which is exactly what nepalify's
+  // keypress interceptor does. Romanised typing is not: it needs whole-word
+  // transliteration with suggestions, which is roman-ime.ts. (nepalify's own
+  // `romanized` layout is the key-map kind, and turned `namaste` into नामासते.)
+  const preeti = nepalify.interceptElementById(textareaId, { layout: 'traditional', enable: false });
+  const popover = $<HTMLElement>('[data-ime]');
+  const roman = popover ? attachRomanIme({ textarea, popover, onChange: sync }) : null;
+
+  let current: Mode = 'romanized';
+
   const setMode = (mode: Mode) => {
     current = mode;
-    interceptors.forEach((i) => i.disable());
-    if (mode === 'romanized') interceptors.get('romanized')?.enable();
-    if (mode === 'preeti') interceptors.get('traditional')?.enable();
-    if (romanHint) romanHint.hidden = mode !== 'romanized';
+    if (mode === 'preeti') preeti.enable();
+    else preeti.disable();
+    if (mode === 'romanized') roman?.enable();
+    else roman?.disable();
     if (keyhelp) keyhelp.hidden = mode !== 'preeti';
     $$<HTMLButtonElement>('[data-mode]').forEach((b) =>
       b.setAttribute('aria-pressed', String(b.dataset.mode === mode)),

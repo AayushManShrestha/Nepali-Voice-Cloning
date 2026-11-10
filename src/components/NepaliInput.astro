@@ -45,11 +45,21 @@ const mapId = `${id}-preeti-map`;
 </div>
 
 <label class="visually-hidden" for={id}>Nepali text to synthesise</label>
-<textarea id={id} class="deva" lang="ne" rows="3" maxlength={maxLength}
-          placeholder="नमस्ते..." spellcheck="false"></textarea>
+<div class="field">
+  <!-- Phone keyboards would otherwise "correct" romanised Nepali into English
+       (mero -> mere) or capitalise it before the IME sees it. -->
+  <textarea id={id} class="deva" lang="ne" rows="3" maxlength={maxLength}
+            placeholder="नमस्ते..." spellcheck="false" autocomplete="off"
+            autocapitalize="off" autocorrect="off"></textarea>
+  <!-- Filled by scripts/roman-ime.ts while a romanised word is being typed. -->
+  <div class="ime" data-ime hidden>
+    <p class="ime-head"><span data-ime-word></span><span class="ime-status" data-ime-status></span></p>
+    <ul class="ime-list" role="listbox" aria-label="Devanagari suggestions" data-ime-list></ul>
+    <p class="ime-keys"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>space</kbd> accept</p>
+  </div>
+</div>
 
 <div class="meter">
-  <p class="hint quiet" data-roman-hint hidden>Typing <code>namaste</code> gives <span class="deva" lang="ne">नमस्ते</span>.</p>
   <p class="count"><span data-count>0</span>&thinsp;/&thinsp;{maxLength}</p>
 </div>
 
@@ -72,7 +82,6 @@ const mapId = `${id}-preeti-map`;
 
 <style>
   .hint { color: var(--ink-soft); font-size: var(--step--1); margin-top: 0.5rem; max-width: 52ch; }
-  .hint.quiet { color: var(--ink-faint); }
 
   .modes { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1.2rem; }
   .modes button {
@@ -90,6 +99,8 @@ const mapId = `${id}-preeti-map`;
     background: var(--ink); color: var(--paper); border-color: var(--ink);
   }
 
+  .field { position: relative; }
+
   textarea {
     width: 100%;
     margin-top: 0.9rem;
@@ -103,6 +114,69 @@ const mapId = `${id}-preeti-map`;
     min-height: 5.5rem;
   }
   textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+
+  /* Suggestions: a list under the word on desktop, a chip strip on touch. */
+  .ime {
+    position: absolute;
+    z-index: 20;
+    min-width: 11rem;
+    max-width: min(20rem, 100%);
+    padding: 0.3rem;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+  }
+  .ime[hidden] { display: none; }
+  .ime-head {
+    display: flex; justify-content: space-between; gap: 1rem;
+    margin: 0;
+    padding: 0.15rem 0.5rem 0.35rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-soft);
+  }
+  .ime-status { color: var(--ink-faint); }
+  .ime-list { list-style: none; margin: 0.25rem 0 0; padding: 0; }
+  .ime-list :global(li) {
+    display: flex; align-items: baseline; gap: 0.6rem;
+    padding: 0.28rem 0.5rem;
+    border-radius: var(--radius);
+    font-size: var(--step-0);
+    line-height: 1.55;
+    cursor: pointer;
+  }
+  @media (hover: hover) {
+    .ime-list :global(li:hover) { background: var(--paper-sunk); }
+  }
+  .ime-list :global(li[aria-selected='true']) {
+    background: var(--accent-wash);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .ime-keys {
+    margin: 0.25rem 0 0;
+    padding: 0.35rem 0.5rem 0.1rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-mono); font-size: 0.62rem; color: var(--ink-faint);
+    white-space: nowrap;
+  }
+  kbd {
+    font-family: inherit; font-size: inherit;
+    padding: 0 0.3em; margin-right: 0.15em;
+    border: 1px solid var(--rule-strong); border-radius: 2px;
+  }
+
+  @media (pointer: coarse) {
+    .ime {
+      display: flex; align-items: center;
+      min-width: 0; max-width: none;
+      padding: 0.25rem;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+    }
+    .ime-head, .ime-keys { display: none; }
+    .ime-list { display: flex; gap: 0.25rem; margin: 0; }
+    .ime-list :global(li) { padding: 0.5rem 0.8rem; white-space: nowrap; }
+  }
 
   .keyhelp { margin-top: 0.9rem; }
   .keyhelp button {
@@ -120,8 +194,7 @@ const mapId = `${id}-preeti-map`;
   .keyhelp figure { margin: 0.8rem 0 0; }
   .keyhelp figcaption { font-size: 0.72rem; color: var(--ink-faint); margin-top: 0.4rem; }
 
-  .meter { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 0.5rem; }
-  .meter .hint { margin: 0; }
+  .meter { display: flex; justify-content: flex-end; align-items: center; gap: 1rem; margin-top: 0.5rem; }
   .count { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-faint); margin: 0; flex: none; }
   code { font-family: var(--font-mono); font-size: 0.9em; background: var(--paper-sunk); padding: 0.05em 0.3em; border-radius: 2px; }
 

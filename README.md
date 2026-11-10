@@ -104,6 +104,8 @@ src/
                 audio-player.ts — waveform + transport, shared by both studios
                 plot-zoom.ts    — fullscreen plot dialog, shared by both studios
                 nepali-input.ts — romanised/Preeti entry, shared by both studios
+                roman-ime.ts    — romanised typing with Devanagari suggestions
+                transliterate.ts · roman-nepali.ts — Google Input Tools lookup, offline fallback
                 progress.ts     — queue position, stage and ETA, shared by both studios
                 server-status.ts — the header's model-server indicator
                 theme.ts        — the toggle, shared by all three pages
@@ -116,8 +118,17 @@ og/             card.html — source of public/og.png, the link-preview image
 ### One Nepali text input, not two
 
 `nepali-input.ts` owns romanised-as-you-type, the Preeti layout, the key map and the
-digit warning. Both studios import it, and it builds as a shared chunk (~1.9 kB
-gzipped) rather than shipping twice.
+digit warning. Both studios import it, and it builds as a shared chunk rather than
+shipping twice.
+
+Romanised typing works like Gboard's Nepali keyboard: each word is looked up on Google
+Input Tools' transliteration endpoint as you type, suggestions appear under it, and
+space or punctuation takes the first one (`namaste` → नमस्ते, `kathmandu` → काठमाडौँ).
+↑/↓ and Enter, or a tap, pick another, and the pick is remembered per browser. The
+endpoint is undocumented and called straight from the browser, so the input never
+depends on it: a rule-based transliterator (`roman-nepali.ts`) fills in when it is slow
+or unreachable. nepalify still drives the Preeti layout, but its own `romanized` layout
+is gone — it mapped one key to one glyph and typed `namaste` as नामासते.
 
 It exists because the TTS page used to be a separate project that solved the same
 problem again with a CDN `<script>` tag and a partly-wired writenepali.com embed —
