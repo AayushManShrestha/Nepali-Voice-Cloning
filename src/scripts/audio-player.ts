@@ -52,6 +52,7 @@ export async function mountPlayer(
   bytes: ArrayBuffer,
   subtitle: string,
   filename: string,
+  type = 'audio/wav',
 ): Promise<void> {
   const audio = $<HTMLAudioElement>(`[data-audio="${which}"]`);
   const canvas = $<HTMLCanvasElement>(`[data-wave="${which}"]`);
@@ -65,7 +66,7 @@ export async function mountPlayer(
   // Release the previous clip before replacing it, or every run leaks a blob.
   const previous = objectUrls.get(which);
   if (previous) URL.revokeObjectURL(previous);
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
   objectUrls.set(which, url);
   audio.src = url;
   if (name) name.textContent = subtitle;
@@ -75,7 +76,24 @@ export async function mountPlayer(
     download.hidden = false;
   }
 
-  const { samples, duration } = await decodeAudio(bytes);
+  let decoded: Awaited<ReturnType<typeof decodeAudio>>;
+  try {
+    decoded = await decodeAudio(bytes);
+  } catch {
+    // The browser cannot decode this clip (AIFF in Chromium and Firefox) though the
+    // server could, so the synthesis itself succeeded. Leave the waveform blank
+    // rather than failing the whole result, and keep the download.
+    peakCache.delete(which);
+    canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+    if (name) name.textContent = `${subtitle} · no preview in this browser`;
+    if (dur) dur.textContent = '–';
+    play.onclick = null;
+    audio.ontimeupdate = null;
+    canvas.onclick = null;
+    canvas.onkeydown = null;
+    return;
+  }
+  const { samples, duration } = decoded;
   const peaks = computePeaks(samples, Math.max(200, Math.round(canvas.clientWidth / 2)));
   peakCache.set(which, { peaks, duration });
   drawWaveform(canvas, peaks, { duration });

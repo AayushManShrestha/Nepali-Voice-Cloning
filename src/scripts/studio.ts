@@ -11,7 +11,9 @@ import type { NepaliInput } from './nepali-input';
 import { checkHealth, estimateWithQueue, synthesize, STAGES } from './api';
 import type { JobStatus, SynthesisResult } from './api';
 import { RAMPS, base64ToBytes, drawEmbedding, drawMatrix } from './viz';
-import { mountPlayer, mountedPlayers, paintWaveform } from './audio-player';
+import { formatTime, mountPlayer, mountedPlayers, paintWaveform } from './audio-player';
+import { prepareReference } from './reference-audio';
+import type { ReferenceClip } from './reference-audio';
 import { wireZoom } from './plot-zoom';
 import { createProgress } from './progress';
 import type { Progress } from './progress';
@@ -38,8 +40,9 @@ const STAGE_LABELS: Record<string, string> = {
 class Studio {
   private form: HTMLFormElement;
   private source: Source = 'library';
-  private recordedBlob: Blob | null = null;
-  private uploadedFile: File | null = null;
+  // Both are pending while the clip is decoded and checked; submit awaits them.
+  private recording: Promise<ReferenceClip> | null = null;
+  private upload: { clip: Promise<ReferenceClip>; name: string } | null = null;
   private recorder: MediaRecorder | null = null;
   private recordTimer: number | null = null;
   private previewAudio = new Audio();
@@ -125,7 +128,27 @@ class Studio {
       }
       button.removeAttribute('data-active');
       label.textContent = 'Record again';
-      announce(`Recorded ${elapsed.toFixed(1)} seconds.`);
+    };
+
+    // What the browser records into varies (WebM in Chrome, Edge and Brave, MP4 in
+    // Safari, Ogg in Firefox) and the server reads only some of it, so every
+    // recording is converted to WAV before it is used. See reference-audio.ts.
+    const finish = (blob: Blob) => {
+      const pending = prepareReference(blob, { alwaysConvert: true });
+      this.recording = pending;
+      pending.then(
+        (clip) => {
+          if (this.recording !== pending) return;
+          showClip(player, clip);
+          announce(`Recorded ${clip.duration!.toFixed(1)} seconds.`);
+        },
+        (error: unknown) => {
+          if (this.recording !== pending) return;
+          player.hidden = true;
+          announce('');
+          this.showError(errorMessage(error));
+        },
+      );
     };
 
     button.addEventListener('click', async () => {
@@ -133,32 +156,51 @@ class Studio {
         stop();
         return;
       }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const chunks: Blob[] = [];
-        this.recorder = new MediaRecorder(stream);
-        this.recorder.ondataavailable = (e) => chunks.push(e.data);
-        this.recorder.onstop = () => {
-          stream.getTracks().forEach((t) => t.stop());
-          this.recordedBlob = new Blob(chunks, { type: this.recorder!.mimeType });
-          player.src = URL.createObjectURL(this.recordedBlob);
-          player.hidden = false;
-        };
-        this.recorder.start();
-
-        button.setAttribute('data-active', '');
-        label.textContent = 'Stop';
-        announce('Recording. Stops by itself after 10 seconds.');
-        elapsed = 0;
-        timer.textContent = '0.0s';
-        this.recordTimer = window.setInterval(() => {
-          elapsed += 0.1;
-          timer.textContent = `${elapsed.toFixed(1)}s`;
-          if (elapsed >= 10) stop();
-        }, 100);
-      } catch {
-        this.showError('Microphone access was refused, so recording is unavailable.');
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        this.showError('This browser cannot record audio here. Upload a clip instead.');
+        return;
       }
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (error) {
+        this.showError(microphoneError(error));
+        return;
+      }
+
+      const chunks: Blob[] = [];
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream);
+        recorder.ondataavailable = (e) => {
+          if (e.data.size) chunks.push(e.data);
+        };
+        recorder.onstop = () => {
+          stream.getTracks().forEach((t) => t.stop());
+          finish(new Blob(chunks, { type: recorder.mimeType }));
+        };
+        recorder.start();
+      } catch {
+        stream.getTracks().forEach((t) => t.stop());
+        this.showError('Recording could not start in this browser. Upload a clip instead.');
+        return;
+      }
+      this.recorder = recorder;
+      this.recording = null;
+      this.clearError();
+      player.hidden = true;
+
+      button.setAttribute('data-active', '');
+      label.textContent = 'Stop';
+      announce('Recording. Stops by itself after 10 seconds.');
+      elapsed = 0;
+      timer.textContent = '0.0s';
+      this.recordTimer = window.setInterval(() => {
+        elapsed += 0.1;
+        timer.textContent = `${elapsed.toFixed(1)}s`;
+        if (elapsed >= 10) stop();
+      }, 100);
     });
   }
 
@@ -169,18 +211,31 @@ class Studio {
     const label = $<HTMLElement>('[data-file-label]', this.form);
     const player = $<HTMLAudioElement>('[data-upload-player]', this.form);
     if (!input || !drop || !label || !player) return;
+    const idle = label.textContent ?? '';
 
     const accept = (file: File | undefined) => {
       if (!file) return;
-      if (file.size > 8 * 1024 * 1024) {
-        this.showError(`${file.name} is ${(file.size / 1048576).toFixed(1)} MB; the limit is 8 MB.`);
-        return;
-      }
-      this.uploadedFile = file;
-      label.textContent = file.name;
-      player.src = URL.createObjectURL(file);
-      player.hidden = false;
+      // Let the same file be picked again after an error.
+      input.value = '';
       this.clearError();
+      player.hidden = true;
+      label.textContent = `Reading ${file.name}…`;
+
+      const pending = prepareReference(file);
+      this.upload = { clip: pending, name: file.name };
+      pending.then(
+        (clip) => {
+          if (this.upload?.clip !== pending) return;
+          label.textContent = describeUpload(file.name, clip);
+          showClip(player, clip);
+        },
+        (error: unknown) => {
+          if (this.upload?.clip !== pending) return;
+          this.upload = null;
+          label.textContent = idle;
+          this.showError(`${file.name}: ${errorMessage(error)}`);
+        },
+      );
     };
 
     input.addEventListener('change', () => accept(input.files?.[0]));
@@ -206,21 +261,32 @@ class Studio {
   }
 
   /* --- reference resolution ---------------------------------------------- */
-  private async referenceBytes(): Promise<{ bytes: ArrayBuffer; label: string }> {
+  private async reference(): Promise<{ clip: ReferenceClip; label: string }> {
     if (this.source === 'library') {
       const checked = $<HTMLInputElement>('input[name="speaker"]:checked', this.form);
       if (!checked) throw new Error('Choose a voice from the library first.');
       const response = await fetch(checked.dataset.src!);
       if (!response.ok) throw new Error('Could not load that reference clip.');
       const label = checked.closest('li')?.querySelector('.vname')?.textContent ?? 'Library voice';
-      return { bytes: await response.arrayBuffer(), label };
+      // Library clips are 16 kHz WAV and are sent exactly as stored.
+      const clip: ReferenceClip = {
+        bytes: await response.arrayBuffer(),
+        type: 'audio/wav',
+        extension: 'wav',
+        duration: null,
+        trimmedFrom: null,
+      };
+      return { clip, label };
     }
     if (this.source === 'record') {
-      if (!this.recordedBlob) throw new Error('Record a clip first, or pick one from the library.');
-      return { bytes: await this.recordedBlob.arrayBuffer(), label: 'Your recording' };
+      if (this.recorder?.state === 'recording') {
+        throw new Error('Stop the recording first, then synthesise.');
+      }
+      if (!this.recording) throw new Error('Record a clip first, or pick one from the library.');
+      return { clip: await this.recording, label: 'Your recording' };
     }
-    if (!this.uploadedFile) throw new Error('Choose an audio file first, or pick one from the library.');
-    return { bytes: await this.uploadedFile.arrayBuffer(), label: this.uploadedFile.name };
+    if (!this.upload) throw new Error('Choose an audio file first, or pick one from the library.');
+    return { clip: await this.upload.clip, label: this.upload.name };
   }
 
   /* --- submit ------------------------------------------------------------ */
@@ -240,16 +306,15 @@ class Studio {
     this.progress.start((jobsAhead) => estimateWithQueue(text.length, jobsAhead));
 
     try {
-      const { bytes, label } = await this.referenceBytes();
+      const { clip, label } = await this.reference();
       const base64 = btoa(
-        Array.from(new Uint8Array(bytes), (b) => String.fromCharCode(b)).join(''),
+        Array.from(new Uint8Array(clip.bytes), (b) => String.fromCharCode(b)).join(''),
       );
 
       const result = await synthesize(text, base64, (status) => this.onProgress(status), undefined, true);
-      await this.render(result, bytes, label);
+      await this.render(result, clip, label);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.showError(message);
+      this.showError(errorMessage(error));
       this.resetPipeline();
     } finally {
       this.setBusy(false);
@@ -305,7 +370,7 @@ class Studio {
   /* --- rendering ---------------------------------------------------------- */
   private async render(
     result: SynthesisResult,
-    referenceBytes: ArrayBuffer,
+    reference: ReferenceClip,
     referenceLabel: string,
   ): Promise<void> {
     const section = $<HTMLElement>('[data-results]');
@@ -315,7 +380,13 @@ class Studio {
 
     const clonedBytes = base64ToBytes(result.audio);
     await Promise.all([
-      mountPlayer('reference', referenceBytes, referenceLabel, 'reference.wav'),
+      mountPlayer(
+        'reference',
+        reference.bytes,
+        referenceLabel,
+        `reference.${reference.extension}`,
+        reference.type,
+      ),
       mountPlayer(
         'cloned',
         clonedBytes.buffer as ArrayBuffer,
@@ -328,6 +399,49 @@ class Studio {
     renderTimings(result.timings);
     section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+}
+
+/* --------------------------------------------------------------------------
+   Reference clip helpers
+   -------------------------------------------------------------------------- */
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** getUserMedia's failures, in words that say what to do about them. */
+function microphoneError(error: unknown): string {
+  switch (error instanceof DOMException ? error.name : '') {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Microphone access was blocked. Allow it in the site settings and try again.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'No microphone was found. Connect one, or upload a clip instead.';
+    case 'NotReadableError':
+    case 'AbortError':
+      return 'The microphone could not be opened. Another app may be using it.';
+    default:
+      return 'Recording could not start. Upload a clip instead.';
+  }
+}
+
+/** Point a panel's preview player at exactly the bytes that will be sent. */
+const previewUrls = new WeakMap<HTMLAudioElement, string>();
+function showClip(player: HTMLAudioElement, clip: ReferenceClip): void {
+  const previous = previewUrls.get(player);
+  if (previous) URL.revokeObjectURL(previous);
+  const url = URL.createObjectURL(new Blob([clip.bytes], { type: clip.type }));
+  previewUrls.set(player, url);
+  player.src = url;
+  player.hidden = false;
+}
+
+function describeUpload(name: string, clip: ReferenceClip): string {
+  if (clip.duration === null) return name;
+  if (clip.trimmedFrom !== null) {
+    return `${name} · using the first ${formatTime(clip.duration)} of ${formatTime(clip.trimmedFrom)}`;
+  }
+  return `${name} · ${clip.duration.toFixed(1)}s`;
 }
 
 /* --------------------------------------------------------------------------

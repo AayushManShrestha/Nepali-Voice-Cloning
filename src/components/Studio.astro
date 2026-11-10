@@ -2,6 +2,7 @@
 import speakers from '../data/speakers.json';
 import NepaliInput from './NepaliInput.astro';
 import SynthControls from './SynthControls.astro';
+import { UPLOAD_ACCEPT } from '../scripts/reference-audio';
 
 // Glosses matter: most people reading this cannot type or read Devanagari, and a demo
 // they cannot drive is not a demo.
@@ -70,9 +71,9 @@ const presets = [
 
         <div class="panel" id="panel-upload" role="tabpanel" aria-labelledby="tab-upload" data-panel="upload" hidden>
           <label class="drop" data-drop>
-            <input type="file" accept="audio/wav,audio/mpeg,audio/flac,audio/ogg,.wav,.mp3,.flac" data-file />
+            <input type="file" accept={UPLOAD_ACCEPT} data-file />
             <span class="dlabel" data-file-label>Choose an audio file, or drop one here</span>
-            <span class="hint quiet">wav, mp3, flac &middot; up to 8&nbsp;MB</span>
+            <span class="hint quiet">wav, mp3, m4a, flac, ogg, opus, webm, aiff &middot; up to 8&nbsp;MB</span>
           </label>
           <audio controls data-upload-player hidden></audio>
         </div>

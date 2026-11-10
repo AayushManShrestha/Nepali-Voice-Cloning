@@ -106,6 +106,18 @@ const STAGES = {
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * The real Space decodes with libsndfile, which cannot read WebM or MP4 -- the formats
+ * browsers record into. Refuse them the same way, so the mock cannot hide a client that
+ * forgets to convert (which is exactly how recording broke in Chromium browsers).
+ */
+function unreadableReference(base64) {
+  const head = Buffer.from(base64.slice(0, 16), 'base64');
+  if (head.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))) return 'WebM';
+  if (head.subarray(4, 8).toString('latin1') === 'ftyp') return 'MP4/M4A';
+  return null;
+}
+
 function json(res, status, body) {
   res.writeHead(status, { ...CORS, 'content-type': 'application/json' });
   res.end(JSON.stringify(body));
@@ -137,6 +149,13 @@ const server = http.createServer(async (req, res) => {
     for await (const chunk of req) body += chunk;
     const parsed = JSON.parse(body || '{}');
     if (!parsed.input_text?.trim()) return json(res, 422, { detail: 'input_text is empty.' });
+    const unreadable = parsed.cloning_audio && unreadableReference(parsed.cloning_audio);
+    if (unreadable) {
+      return json(res, 415, {
+        detail: `Could not read the reference audio (it looks like ${unreadable}). ` +
+          'Send WAV, FLAC, MP3, Ogg (Vorbis or Opus) or AIFF.',
+      });
+    }
     const id = `mock-${jobs.size + 1}`;
     jobs.set(id, parsed.cloning_audio ? 'cloning' : 'tts');
     return json(res, 202, { id, events: `/api/v2/jobs/${id}/events` });
