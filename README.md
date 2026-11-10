@@ -6,6 +6,8 @@ trained on that speaker.
 
 **Live:** [nepali-voice-cloning.vercel.app](https://nepali-voice-cloning.vercel.app)
 
+**Paper:** [arXiv:2601.18694](https://arxiv.org/abs/2601.18694)
+
 This repository is the whole frontend for the project — three pages against two model
 servers, each server its own Hugging Face Space and its own repository.
 
