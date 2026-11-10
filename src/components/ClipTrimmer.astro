@@ -1,0 +1,157 @@
+---
+/**
+ * The editor for a reference clip: select a part of the waveform, delete it, undo, redo.
+ *
+ * Markup half of scripts/clip-trimmer.ts; every `data-trim-*` hook is queried there.
+ * Hidden until a clip is loaded into it. Used once per source that produces a clip of
+ * the visitor's own (recording, upload); library voices are already clean.
+ */
+interface Props {
+  /** Which source this edits, for the root's `data-trim` and the labels. */
+  name: 'record' | 'upload';
+}
+const { name } = Astro.props;
+const what = name === 'record' ? 'recording' : 'upload';
+---
+<div class="trim" data-trim={name} hidden>
+  <p class="hint">
+    Drag across anything you don&rsquo;t want (a cough, a click, silence at either end),
+    then click or tap it to delete it.
+  </p>
+  <div class="wave" data-trim-wave tabindex="0" role="group"
+       aria-label={`Waveform of the ${what}. Drag across a part, or press Enter, to select it; press Enter again to delete it.`}>
+    <canvas data-trim-canvas aria-hidden="true"></canvas>
+    <div class="selection" data-trim-selection hidden>
+      <button type="button" class="delete" data-trim-delete aria-label="Delete the selection" title="Delete (Enter)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>
+      </button>
+      <div class="sel-handle start" data-trim-sel-handle="start" role="slider" tabindex="0"
+           aria-label="Start of the selection"></div>
+      <div class="sel-handle end" data-trim-sel-handle="end" role="slider" tabindex="0"
+           aria-label="End of the selection"></div>
+    </div>
+    <div class="playhead" data-trim-playhead hidden></div>
+  </div>
+  <div class="bar">
+    <button type="button" class="round" data-trim-play aria-label="Play">
+      <svg class="icon-play" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15L19.5 12z"/></svg>
+      <svg class="icon-stop" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="1.5"/></svg>
+    </button>
+    <button type="button" class="round" data-trim-undo aria-label="Undo the last delete" title="Undo (Ctrl+Z)" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+    </button>
+    <button type="button" class="round" data-trim-redo aria-label="Redo the delete" title="Redo (Ctrl+Shift+Z)" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+    </button>
+    <p class="readout" data-trim-readout></p>
+  </div>
+</div>
+
+<style>
+  .trim { margin-top: 1.1rem; }
+  .trim[hidden] { display: none; }
+
+  .hint { margin: 0 0 0.6rem; font-size: var(--step--1); color: var(--ink-faint); max-width: 60ch; }
+
+  .wave {
+    position: relative;
+    height: 84px;
+    background: var(--viz-bg);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    /* Vertical swipes still scroll the page on touch; horizontal ones select. */
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: crosshair;
+  }
+  .wave:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 3px; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* The selection: what a click or Enter will delete. */
+  .selection {
+    position: absolute; top: 0; bottom: 0;
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    box-shadow: inset 1.5px 0 var(--accent), inset -1.5px 0 var(--accent);
+    cursor: pointer;
+  }
+  .selection[hidden] { display: none; }
+  .wave[data-dragging] .selection { cursor: crosshair; }
+
+  .delete {
+    position: absolute; left: 50%; top: 50%;
+    width: 34px; height: 34px; margin: -17px 0 0 -17px;
+    display: grid; place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: 0 0 0 3px var(--paper), var(--shadow);
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
+    z-index: 2;
+  }
+  .selection:hover .delete,
+  .delete:focus-visible,
+  .wave:focus-within .delete { opacity: 1; transform: none; }
+  .wave[data-dragging] .delete { opacity: 0; }
+  .delete:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 3px; }
+  .delete:disabled { background: var(--rule-strong); color: var(--ink-faint); cursor: not-allowed; }
+  /* No hover on touch: show it whenever there is a selection. */
+  @media (hover: none) { .delete { opacity: 1; transform: none; } }
+
+  .sel-handle {
+    position: absolute; top: 50%;
+    width: 22px; height: 30px; margin-top: -15px;
+    cursor: ew-resize;
+    touch-action: none;
+    outline: none;
+  }
+  .sel-handle.start { left: -11px; }
+  .sel-handle.end { right: -11px; }
+  .sel-handle::after {
+    content: '';
+    position: absolute; left: 50%; top: 50%;
+    width: 8px; height: 22px; margin: -11px 0 0 -4px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--paper);
+  }
+  .sel-handle:focus-visible::after { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent-ring); }
+  @media (pointer: coarse) {
+    .sel-handle { width: 40px; height: 44px; margin-top: -22px; }
+    .sel-handle.start { left: -20px; }
+    .sel-handle.end { right: -20px; }
+  }
+
+  .playhead {
+    position: absolute; top: 0; bottom: 0;
+    width: 2px; margin-left: -1px;
+    background: var(--ink);
+    pointer-events: none;
+  }
+  .playhead[hidden] { display: none; }
+
+  .bar { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; flex-wrap: wrap; }
+  .round {
+    width: 32px; height: 32px; flex: none;
+    display: grid; place-items: center;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--rule-strong);
+    border-radius: 50%;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.18s var(--ease);
+  }
+  .round:hover:not(:disabled), .round[data-playing] {
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  }
+  .round:disabled { opacity: 0.35; cursor: default; }
+  .round .icon-stop, .round[data-playing] .icon-play { display: none; }
+  .round[data-playing] .icon-stop { display: block; }
+  .readout { margin: 0 0 0 0.25rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-soft); }
+</style>

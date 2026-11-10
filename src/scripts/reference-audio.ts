@@ -19,6 +19,12 @@
  * Every clip the browser can decode is also checked for length and for silence here,
  * so a muted or wrong microphone is caught at once rather than after a minute in the
  * queue.
+ *
+ * Decoding and encoding are separate steps (`loadReference`, then `clipFor`) because
+ * the visitor can edit a clip in between: the encoder averages every 1.6 s window of
+ * what it is given, so a cough or a second voice left in the clip ends up in the
+ * clone. Trimming the ends and cutting out the middle are both just a matter of which
+ * pieces of the decoded samples get joined and encoded.
  */
 
 /** The server's MAX_AUDIO_BYTES. Uploads above this are refused before reading. */
@@ -168,16 +174,42 @@ function megabytes(bytes: number): string {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
+/** A decoded, validated recording or upload, before any cropping. */
+export interface LoadedReference {
+  /** The file exactly as recorded or chosen. */
+  original: ArrayBuffer;
+  /** Set when `original` can be sent as is: the server reads it and it is not a recording. */
+  native: { type: string; extension: string } | null;
+  /** Mono samples at `rate`; null when this browser cannot decode the file. */
+  samples: Float32Array | null;
+  rate: number;
+  /** Seconds; null when this browser cannot decode the file. */
+  duration: number | null;
+}
+
+/** A stretch of a clip, in seconds. */
+export interface Span {
+  start: number;
+  end: number;
+}
+
 /**
- * Validate a recording or upload and return the bytes to send.
+ * Longest stretch that fits the server's byte limit once encoded as 16-bit WAV. At
+ * 16 kHz that is about 4 minutes 22 seconds, far more voice than the encoder needs.
+ */
+export const maxSendSeconds = (rate: number): number =>
+  Math.floor((MAX_REFERENCE_BYTES - WAV_HEADER_BYTES) / 2) / rate;
+
+/**
+ * Decode and validate a recording or upload.
  *
  * `alwaysConvert` is for recordings: re-encode even when the server could read the
  * container, so every browser's recordings take the same path.
  */
-export async function prepareReference(
+export async function loadReference(
   input: Blob,
   { alwaysConvert = false }: { alwaysConvert?: boolean } = {},
-): Promise<ReferenceClip> {
+): Promise<LoadedReference> {
   if (input.size === 0) throw new ReferenceAudioError('That file is empty.');
   if (input.size > MAX_REFERENCE_BYTES) {
     throw new ReferenceAudioError(
@@ -187,6 +219,7 @@ export async function prepareReference(
 
   const original = await input.arrayBuffer();
   const container = sniff(new Uint8Array(original));
+  const native = (!alwaysConvert && SERVER_READS[container]) || null;
 
   let decoded: AudioBuffer | null = null;
   let samples: Float32Array | null = null;
@@ -197,32 +230,8 @@ export async function prepareReference(
     // Not fatal yet: Chromium cannot decode AIFF, but the server can.
   }
 
-  if (decoded && samples) {
-    if (decoded.duration < MIN_SECONDS) {
-      throw new ReferenceAudioError(
-        `That clip is only ${decoded.duration.toFixed(1)} seconds long. ` +
-          'Use at least a second of speech; five is ideal.',
-      );
-    }
-    if (peak(samples) < SILENT_PEAK) {
-      throw new ReferenceAudioError(
-        'That clip is silent. If you recorded it, check that the right microphone is ' +
-          'selected and not muted.',
-      );
-    }
-  }
-
-  const native = SERVER_READS[container];
-  if (native && !alwaysConvert) {
-    return {
-      bytes: original,
-      ...native,
-      duration: decoded?.duration ?? null,
-      trimmedFrom: null,
-    };
-  }
-
   if (!decoded || !samples) {
+    if (native) return { original, native, samples: null, rate: 0, duration: null };
     throw new ReferenceAudioError(
       container === 'unknown'
         ? `That file could not be read as audio. Use ${SUPPORTED_SUMMARY}.`
@@ -230,17 +239,92 @@ export async function prepareReference(
           'Convert it to WAV or MP3, or try another browser.',
     );
   }
+  if (decoded.duration < MIN_SECONDS) {
+    throw new ReferenceAudioError(
+      `That clip is only ${decoded.duration.toFixed(1)} seconds long. ` +
+        'Use at least a second of speech; five is ideal.',
+    );
+  }
+  if (peak(samples) < SILENT_PEAK) {
+    throw new ReferenceAudioError(
+      'That clip is silent. If you recorded it, check that the right microphone is ' +
+        'selected and not muted.',
+    );
+  }
+  return { original, native, samples, rate: decoded.sampleRate, duration: decoded.duration };
+}
 
-  // Converting can grow a file (an 8 MB M4A can be ~17 minutes, ~33 MB as WAV), and
-  // the server's limit applies to what is sent. Keep the first ~4 minutes, which is
-  // still far more voice than the encoder needs.
+/** Fade length at each join, so a cut never lands as a click. */
+const JOIN_FADE_SECONDS = 0.005;
+
+/**
+ * The kept pieces of a clip, back to back, with a short fade at every join. A piece
+ * that starts at the very beginning or ends at the very end keeps that edge as is.
+ */
+export function joinPieces(samples: Float32Array, rate: number, pieces: Span[]): Float32Array {
+  const ranges = pieces
+    .map((p) => [Math.max(0, Math.floor(p.start * rate)), Math.min(samples.length, Math.ceil(p.end * rate))])
+    .filter(([a, b]) => b > a);
+  const out = new Float32Array(ranges.reduce((n, [a, b]) => n + b - a, 0));
+  const fade = Math.max(1, Math.round(JOIN_FADE_SECONDS * rate));
+  let at = 0;
+  for (const [a, b] of ranges) {
+    out.set(samples.subarray(a, b), at);
+    const n = Math.min(fade, Math.floor((b - a) / 2));
+    for (let i = 0; i < n; i += 1) {
+      if (a > 0) out[at + i] *= i / n;
+      if (b < samples.length) out[at + (b - a) - 1 - i] *= i / n;
+    }
+    at += b - a;
+  }
+  return out;
+}
+
+/**
+ * The bytes to send for the `kept` pieces of a clip (all of it when omitted).
+ *
+ * The whole of a file the server reads is sent byte for byte, so its speaker embedding
+ * is exactly what it has always been. Anything cut, a recording, or a format the server
+ * cannot read is encoded as WAV -- capped at the byte limit, which an uncut 17-minute
+ * M4A would otherwise blow through.
+ */
+export function clipFor(ref: LoadedReference, kept?: Span[] | null): ReferenceClip {
+  const { samples, rate, duration } = ref;
+  if (!samples || duration === null) {
+    return { bytes: ref.original, ...ref.native!, duration: null, trimmedFrom: null };
+  }
+  const pieces = kept ?? [{ start: 0, end: duration }];
+  const whole =
+    pieces.length === 1 &&
+    Math.floor(pieces[0].start * rate) <= 0 &&
+    Math.ceil(pieces[0].end * rate) >= samples.length;
+  if (whole && ref.native) {
+    return { bytes: ref.original, ...ref.native, duration, trimmedFrom: null };
+  }
+  const joined = whole ? samples : joinPieces(samples, rate, pieces);
   const maxSamples = Math.floor((MAX_REFERENCE_BYTES - WAV_HEADER_BYTES) / 2);
-  const kept = samples.length > maxSamples ? samples.subarray(0, maxSamples) : samples;
+  const sent = joined.length > maxSamples ? joined.subarray(0, maxSamples) : joined;
   return {
-    bytes: encodeWav(kept, decoded.sampleRate),
+    bytes: encodeWav(sent, rate),
     type: 'audio/wav',
     extension: 'wav',
-    duration: kept.length / decoded.sampleRate,
-    trimmedFrom: kept.length < samples.length ? decoded.duration : null,
+    duration: sent.length / rate,
+    trimmedFrom: sent.length < joined.length ? joined.length / rate : null,
   };
 }
+
+/**
+ * Where editing starts. A recording loses its first 0.1 s and last 0.2 s, which is where
+ * the clicks of the record and stop buttons land; everything else is left for the
+ * visitor to see and delete. An upload starts whole, so unedited it is still sent byte
+ * for byte.
+ */
+export function initialSpan(ref: LoadedReference, { recording = false } = {}): Span {
+  const { duration } = ref;
+  if (duration === null) return { start: 0, end: 0 };
+  if (!recording || duration - 0.3 < MIN_SECONDS) return { start: 0, end: duration };
+  return { start: 0.1, end: duration - 0.2 };
+}
+
+/** Least audio that editing may leave: the same floor as a whole clip. */
+export const MIN_SPAN_SECONDS = MIN_SECONDS;

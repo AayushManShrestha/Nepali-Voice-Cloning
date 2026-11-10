@@ -102,6 +102,8 @@ src/
                 tts.ts    · tts-api.ts — the TTS island
                 viz.ts          — canvas renderers: matrices, waveforms, embeddings
                 audio-player.ts — waveform + transport, shared by both studios
+                reference-audio.ts — decode, check and encode a recording or upload
+                clip-trimmer.ts — delete parts of a recording or upload before it is sent
                 plot-zoom.ts    — fullscreen plot dialog, shared by both studios
                 nepali-input.ts — romanised/Preeti entry, shared by both studios
                 roman-ime.ts    — romanised typing with Devanagari suggestions

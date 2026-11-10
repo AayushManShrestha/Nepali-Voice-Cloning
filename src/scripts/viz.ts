@@ -51,7 +51,7 @@ function ramp(stops: Array<[number, number, number]>, t: number): [number, numbe
   return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 }
 
-function cssVar(name: string): string {
+export function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
@@ -59,7 +59,7 @@ function cssVar(name: string): string {
 
 interface Box { x: number; y: number; w: number; h: number }
 
-function fit(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w: number; h: number } {
+export function fit(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w: number; h: number } {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const rect = canvas.getBoundingClientRect();
   const w = Math.max(1, Math.round(rect.width));

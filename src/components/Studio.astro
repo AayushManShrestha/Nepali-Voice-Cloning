@@ -2,6 +2,7 @@
 import speakers from '../data/speakers.json';
 import NepaliInput from './NepaliInput.astro';
 import SynthControls from './SynthControls.astro';
+import ClipTrimmer from './ClipTrimmer.astro';
 import { UPLOAD_ACCEPT } from '../scripts/reference-audio';
 
 // Glosses matter: most people reading this cannot type or read Devanagari, and a demo
@@ -62,10 +63,10 @@ const presets = [
             </button>
             <!-- The timer ticks every 100ms, so it is not live; the status line
                  below announces only the start and the end of a recording. -->
-            <p class="timer" data-record-timer>Up to 10 seconds</p>
+            <p class="timer" data-record-timer>Up to 20 seconds</p>
             <p class="visually-hidden" data-record-status role="status"></p>
           </div>
-          <audio controls data-recorded-player hidden></audio>
+          <ClipTrimmer name="record" />
           <p class="hint quiet">Needs microphone permission. Audio never leaves your browser except as the reference clip.</p>
         </div>
 
@@ -75,7 +76,7 @@ const presets = [
             <span class="dlabel" data-file-label>Choose an audio file, or drop one here</span>
             <span class="hint quiet">wav, mp3, m4a, flac, ogg, opus, webm, aiff &middot; up to 8&nbsp;MB</span>
           </label>
-          <audio controls data-upload-player hidden></audio>
+          <ClipTrimmer name="upload" />
         </div>
       </fieldset>
 
@@ -237,7 +238,6 @@ const presets = [
   .bulb { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
   .rec[data-active] .bulb { animation: pulse 1s ease-in-out infinite; }
   .timer { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-faint); margin: 0; }
-  audio { width: 100%; margin-top: 0.9rem; height: 38px; }
 
   /* --- upload ------------------------------------------------------------- */
   .drop {

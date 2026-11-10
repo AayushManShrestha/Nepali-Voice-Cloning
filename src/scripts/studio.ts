@@ -12,14 +12,23 @@ import { checkHealth, estimateWithQueue, synthesize, STAGES } from './api';
 import type { JobStatus, SynthesisResult } from './api';
 import { RAMPS, base64ToBytes, drawEmbedding, drawMatrix } from './viz';
 import { formatTime, mountPlayer, mountedPlayers, paintWaveform } from './audio-player';
-import { prepareReference } from './reference-audio';
-import type { ReferenceClip } from './reference-audio';
+import { MIN_SPAN_SECONDS, clipFor, initialSpan, loadReference, maxSendSeconds } from './reference-audio';
+import type { LoadedReference, ReferenceClip } from './reference-audio';
+import { createTrimmer } from './clip-trimmer';
+import type { Trimmer } from './clip-trimmer';
 import { wireZoom } from './plot-zoom';
 import { createProgress } from './progress';
 import type { Progress } from './progress';
 import { initServerStatus } from './server-status';
 
 type Source = 'library' | 'record' | 'upload';
+
+/**
+ * Recordings stop by themselves here. The encoder averages 1.6 s windows, so length
+ * only steadies the embedding; synthesis time does not depend on it. 20 s leaves room
+ * for pauses and restarts, and the clip editor deletes what should not be kept.
+ */
+const MAX_RECORD_SECONDS = 20;
 
 const $ = <T extends Element>(sel: string, root: ParentNode = document): T | null =>
   root.querySelector<T>(sel);
@@ -40,9 +49,12 @@ const STAGE_LABELS: Record<string, string> = {
 class Studio {
   private form: HTMLFormElement;
   private source: Source = 'library';
-  // Both are pending while the clip is decoded and checked; submit awaits them.
-  private recording: Promise<ReferenceClip> | null = null;
-  private upload: { clip: Promise<ReferenceClip>; name: string } | null = null;
+  // Both are pending while the clip is decoded and checked; submit awaits them, then
+  // encodes whatever stretch the trimmer has selected.
+  private recording: Promise<LoadedReference> | null = null;
+  private upload: { ref: Promise<LoadedReference>; name: string } | null = null;
+  private recordTrim: Trimmer | null = null;
+  private uploadTrim: Trimmer | null = null;
   private recorder: MediaRecorder | null = null;
   private recordTimer: number | null = null;
   private previewAudio = new Audio();
@@ -112,8 +124,10 @@ class Studio {
     const label = $<HTMLElement>('[data-record-label]', this.form);
     const timer = $<HTMLElement>('[data-record-timer]', this.form);
     const status = $<HTMLElement>('[data-record-status]', this.form);
-    const player = $<HTMLAudioElement>('[data-recorded-player]', this.form);
-    if (!button || !label || !timer || !player) return;
+    const trimRoot = $<HTMLElement>('[data-trim="record"]', this.form);
+    if (!button || !label || !timer || !trimRoot) return;
+    const trimmer = createTrimmer(trimRoot, { minLength: MIN_SPAN_SECONDS, maxLength: maxSendSeconds });
+    this.recordTrim = trimmer;
 
     let elapsed = 0;
     const announce = (text: string) => {
@@ -133,18 +147,19 @@ class Studio {
     // What the browser records into varies (WebM in Chrome, Edge and Brave, MP4 in
     // Safari, Ogg in Firefox) and the server reads only some of it, so every
     // recording is converted to WAV before it is used. See reference-audio.ts.
+    // Editing starts past the clicks of the record and stop buttons.
     const finish = (blob: Blob) => {
-      const pending = prepareReference(blob, { alwaysConvert: true });
+      const pending = loadReference(blob, { alwaysConvert: true });
       this.recording = pending;
       pending.then(
-        (clip) => {
+        (ref) => {
           if (this.recording !== pending) return;
-          showClip(player, clip);
-          announce(`Recorded ${clip.duration!.toFixed(1)} seconds.`);
+          trimmer.load(ref.samples!, ref.rate, initialSpan(ref, { recording: true }));
+          announce(`Recorded ${ref.duration!.toFixed(1)} seconds.`);
         },
         (error: unknown) => {
           if (this.recording !== pending) return;
-          player.hidden = true;
+          trimmer.clear();
           announce('');
           this.showError(errorMessage(error));
         },
@@ -189,17 +204,17 @@ class Studio {
       this.recorder = recorder;
       this.recording = null;
       this.clearError();
-      player.hidden = true;
+      trimmer.clear();
 
       button.setAttribute('data-active', '');
       label.textContent = 'Stop';
-      announce('Recording. Stops by itself after 10 seconds.');
+      announce(`Recording. Stops by itself after ${MAX_RECORD_SECONDS} seconds.`);
       elapsed = 0;
       timer.textContent = '0.0s';
       this.recordTimer = window.setInterval(() => {
         elapsed += 0.1;
         timer.textContent = `${elapsed.toFixed(1)}s`;
-        if (elapsed >= 10) stop();
+        if (elapsed >= MAX_RECORD_SECONDS) stop();
       }, 100);
     });
   }
@@ -209,28 +224,31 @@ class Studio {
     const input = $<HTMLInputElement>('[data-file]', this.form);
     const drop = $<HTMLElement>('[data-drop]', this.form);
     const label = $<HTMLElement>('[data-file-label]', this.form);
-    const player = $<HTMLAudioElement>('[data-upload-player]', this.form);
-    if (!input || !drop || !label || !player) return;
+    const trimRoot = $<HTMLElement>('[data-trim="upload"]', this.form);
+    if (!input || !drop || !label || !trimRoot) return;
     const idle = label.textContent ?? '';
+    const trimmer = createTrimmer(trimRoot, { minLength: MIN_SPAN_SECONDS, maxLength: maxSendSeconds });
+    this.uploadTrim = trimmer;
 
     const accept = (file: File | undefined) => {
       if (!file) return;
       // Let the same file be picked again after an error.
       input.value = '';
       this.clearError();
-      player.hidden = true;
+      trimmer.clear();
       label.textContent = `Reading ${file.name}…`;
 
-      const pending = prepareReference(file);
-      this.upload = { clip: pending, name: file.name };
+      const pending = loadReference(file);
+      this.upload = { ref: pending, name: file.name };
       pending.then(
-        (clip) => {
-          if (this.upload?.clip !== pending) return;
-          label.textContent = describeUpload(file.name, clip);
-          showClip(player, clip);
+        (ref) => {
+          if (this.upload?.ref !== pending) return;
+          label.textContent = describeUpload(file.name, ref);
+          // A file this browser cannot decode (AIFF in Chromium) is sent whole, unseen.
+          if (ref.samples) trimmer.load(ref.samples, ref.rate, initialSpan(ref));
         },
         (error: unknown) => {
-          if (this.upload?.clip !== pending) return;
+          if (this.upload?.ref !== pending) return;
           this.upload = null;
           label.textContent = idle;
           this.showError(`${file.name}: ${errorMessage(error)}`);
@@ -283,10 +301,12 @@ class Studio {
         throw new Error('Stop the recording first, then synthesise.');
       }
       if (!this.recording) throw new Error('Record a clip first, or pick one from the library.');
-      return { clip: await this.recording, label: 'Your recording' };
+      const ref = await this.recording;
+      return { clip: clipFor(ref, this.recordTrim?.kept()), label: 'Your recording' };
     }
     if (!this.upload) throw new Error('Choose an audio file first, or pick one from the library.');
-    return { clip: await this.upload.clip, label: this.upload.name };
+    const ref = await this.upload.ref;
+    return { clip: clipFor(ref, ref.samples ? this.uploadTrim?.kept() : null), label: this.upload.name };
   }
 
   /* --- submit ------------------------------------------------------------ */
@@ -425,23 +445,9 @@ function microphoneError(error: unknown): string {
   }
 }
 
-/** Point a panel's preview player at exactly the bytes that will be sent. */
-const previewUrls = new WeakMap<HTMLAudioElement, string>();
-function showClip(player: HTMLAudioElement, clip: ReferenceClip): void {
-  const previous = previewUrls.get(player);
-  if (previous) URL.revokeObjectURL(previous);
-  const url = URL.createObjectURL(new Blob([clip.bytes], { type: clip.type }));
-  previewUrls.set(player, url);
-  player.src = url;
-  player.hidden = false;
-}
-
-function describeUpload(name: string, clip: ReferenceClip): string {
-  if (clip.duration === null) return name;
-  if (clip.trimmedFrom !== null) {
-    return `${name} · using the first ${formatTime(clip.duration)} of ${formatTime(clip.trimmedFrom)}`;
-  }
-  return `${name} · ${clip.duration.toFixed(1)}s`;
+function describeUpload(name: string, ref: LoadedReference): string {
+  if (ref.duration === null) return `${name} · no preview in this browser; sent as it is`;
+  return `${name} · ${ref.duration < 60 ? `${ref.duration.toFixed(1)}s` : formatTime(ref.duration)}`;
 }
 
 /* --------------------------------------------------------------------------
