@@ -1,5 +1,10 @@
 /**
- * Nepali text entry: romanised-as-you-type, Preeti layout, or paste Devanagari.
+ * Nepali text entry: romanised-as-you-type, or the Preeti layout.
+ *
+ * There is no separate "paste Devanagari" mode. Neither mode touches Devanagari:
+ * the romanised IME acts only on Latin letters and leaves pastes alone, and the Preeti
+ * interceptor only rewrites keys in its own map. So pasting, or typing on a native
+ * Nepali keyboard, works the same in both.
  *
  * Shared by the cloning studio and the TTS page. It used to exist twice -- once here
  * and once as a CDN `<script>` tag plus a half-wired writenepali.com embed in the
@@ -14,7 +19,7 @@
 import nepalify from 'nepalify';
 import { attachRomanIme } from './roman-ime';
 
-export type Mode = 'romanized' | 'preeti' | 'raw';
+export type Mode = 'romanized' | 'preeti';
 
 export interface NepaliInputOptions {
   /** Scope for every query; lets two instances coexist on one page. */
