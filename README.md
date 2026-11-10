@@ -92,6 +92,7 @@ src/
   pages/        index.astro (cloning) · tts.astro (TTS) · mos.astro (study)
   components/   Hero, Pipeline, Studio, Results, Notes, header/footer
                 NepaliInput, SynthControls, PlotZoom — shared by both studios
+                PreetiKeyboard — the Preeti key map inside NepaliInput
     tts/        TtsStudio, TtsResults
     mos/        Scores, Rubric, SpeakerPanel
   data/         speakers.json      — the voice library the cloning studio offers
@@ -129,6 +130,12 @@ script has a component that renders the elements it queries by `data-` attribute
 `plot-zoom.ts` — so a renamed hook is a two-file change, not a hunt through both
 studios. The studios still own the parts that differ: the reference-voice step,
 the step numbering, and which plots exist.
+
+The Preeti key map is drawn in HTML by `components/PreetiKeyboard.astro`, which reads
+every glyph from nepalify's `traditional` layout at build time — the same map the
+textarea types with — so it follows the theme and cannot disagree with the input. It
+replaced a PNG of the classic Preeti font chart, which differed from nepalify on the
+number row and most Shift keys (the chart said `1` types ज्ञ; the textarea types १).
 
 ### The TTS backend contract lives in one file
 

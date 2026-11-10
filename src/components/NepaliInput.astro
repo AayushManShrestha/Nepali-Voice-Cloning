@@ -11,6 +11,8 @@
  * Renders the contents of a step, not the step itself; the studio owns the
  * fieldset, the legend and its numbering.
  */
+import PreetiKeyboard from './PreetiKeyboard.astro';
+
 interface Props {
   /** The textarea's DOM id. nepalify addresses elements by id, so it must be unique. */
   id: string;
@@ -37,9 +39,8 @@ const mapId = `${id}-preeti-map`;
     Show the Preeti key map
   </button>
   <figure id={mapId} data-preeti-map hidden>
-    <img src="/images/preeti-keyboard.png" width="1154" height="388" loading="lazy" decoding="async"
-         alt="Preeti keyboard layout: which Devanagari character each key on a QWERTY keyboard produces." />
-    <figcaption>Preeti maps each QWERTY key to a Devanagari glyph.</figcaption>
+    <PreetiKeyboard />
+    <figcaption>Preeti maps each QWERTY key to a Devanagari glyph: the large one on its own, the small one with Shift.</figcaption>
   </figure>
 </div>
 
@@ -117,12 +118,6 @@ const mapId = `${id}-preeti-map`;
   }
   .keyhelp button:hover { color: var(--accent); border-bottom-color: var(--accent); }
   .keyhelp figure { margin: 0.8rem 0 0; }
-  .keyhelp img {
-    width: 100%; height: auto; display: block;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    background: #fff;
-  }
   .keyhelp figcaption { font-size: 0.72rem; color: var(--ink-faint); margin-top: 0.4rem; }
 
   .meter { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 0.5rem; }
